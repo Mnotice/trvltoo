@@ -1,370 +1,530 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { MapPin, Dices, Star, Coffee, Sun, Moon, Copy, Check, Leaf } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchItinerary } from './apiService';
+import { 
+  User, Heart, Utensils, Laptop, 
+  Moon, Sun, ArrowRight, Compass, 
+  MapPin, Clock, CheckCircle2
+} from 'lucide-react';
+import { db } from './firebase';
+import { collection, addDoc, onSnapshot, doc } from 'firebase/firestore';
+import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
 
-const ThemeToggle = () => {
-  const [isDark, setIsDark] = useState(false);
-  
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
+// --- Security Protocol Components (#7 Error Boundaries) ---
+class SecurityErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(error) { console.error("🛡️ SECURITY AUDIT FAILURE:", error); }
+  render() {
+    if (this.state.hasError) return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-10 text-center">
+        <div className="p-8 rounded-[3rem] bg-red-500/10 border-2 border-red-500/20 max-w-lg">
+           <h2 className="text-4xl font-black italic tracking-tighter uppercase text-red-500 mb-6">Expert Engine Fault</h2>
+           <button onClick={() => window.location.reload()} className="px-10 py-4 bg-white text-slate-900 rounded-full font-black uppercase tracking-tighter">Restart</button>
+        </div>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
+// --- Constants & Config ---
+const N8N_WEBHOOK_URL = "https://mikhailnicholls6.app.n8n.cloud/webhook-test/travel-consultant";
+
+const PERSONAS = [
+  { id: 'Solo', icon: User, label: 'Solo Adventurer', desc: 'Freedom and discovery.' },
+  { id: 'Couple', icon: Heart, label: 'Romantic Couple', desc: 'Shared moments.' },
+  { id: 'Foodie', icon: Utensils, label: 'Foodie Friends', desc: 'Culture through food.' },
+  { id: 'Nomad', icon: Laptop, label: 'Digital Nomad', desc: 'Work and play.' },
+];
+
+const LOCATIONS = [
+  { id: 'Phuket', image: '/src/assets/phuket.png', desc: 'Islands & Nightlife' },
+  { id: 'Krabi', image: '/src/assets/krabi.png', desc: 'Cliffs & Caves' },
+  { id: 'Bangkok', image: '/src/assets/bangkok.png', desc: 'City & Culture' },
+  { id: 'Chiang Mai', image: '/src/assets/chiang_mai.png', desc: 'Mountains & Temples' }
+];
+
+const LOADING_MESSAGES = ["Consulting Agent...", "Scanning hidden gems...", "Optimizing energy...", "Finalizing your day..."];
+
+const ENERGY_LABELS = [
+  "Total Zen & Recharging",
+  "Slow Morning & Chill Afternoon",
+  "Low Impact Exploration",
+  "Moderate Sightseeing Pace",
+  "Balanced Cultured Discover",
+  "Vibrant & Social Energy",
+  "High-Intensity Exploration",
+  "High Octane Adventure",
+  "Maximum Adrenaline Flow",
+  "Limitless Energy Protocol"
+];
+
+const MOCK_EXPERT_RESULTS = {
+  Solo: {
+    strategy: "Optimizing for peak isolation and raw discovery.",
+    morning: "Sunrise trek to Black Rock Viewpoint (360° views)",
+    afternoon: "Deep-sea scouting or solo meditation at Nui Beach",
+    evening: "Secret night market tasting tour in Old Town",
+    hourly: [24,25,26,28,30,31,32,32,31,30,28,27,26,25,24,23]
+  },
+  Couple: {
+    strategy: "Curating for shared emotional resonance and cinematic lighting.",
+    morning: "Private longtail boat to Phra Nang Cave (7 AM)",
+    afternoon: "Couples spa session at a jungle-integrated retreat",
+    evening: "Private sunset dinner on a hidden clifftop",
+    hourly: [23,24,25,27,29,30,31,31,30,29,27,26,25,24,23,22]
+  },
+  Foodie: {
+    strategy: "A narrative-driven culinary path bypassing tourist zones.",
+    morning: "Hidden fresh market 'chef-led' tasting session",
+    afternoon: "Street food workshop with a local legend",
+    evening: "Table-side storytelling at Jek Pui Curry",
+    hourly: [25,26,27,29,31,32,33,33,32,31,29,28,27,26,25,24]
+  },
+  Nomad: {
+    strategy: "High-velocity work node cycling with rapid decompression.",
+    morning: "Jungle-co-working sprint (fiber connected)",
+    afternoon: "Beach-office protocol under a natural canopy",
+    evening: "Rooftop networking protocol at sunset",
+    hourly: [24,24,26,28,30,31,32,32,31,30,28,27,26,25,24,24]
+  }
+};
+
+const WeatherTimeline = ({ hourly }) => {
+  const [hoverIndex, setHoverIndex] = useState(null);
+  if (!hourly || hourly.length === 0) return null;
+  const max = Math.max(...hourly);
+  const min = Math.min(...hourly);
+  const range = max - min || 1;
+  const width = 800;
+  const height = 120;
+  const padding = 40;
+  const points = hourly.map((temp, i) => ({
+    x: (i / (hourly.length - 1)) * (width - padding * 2) + padding,
+    y: height - padding - ((temp - min) / range) * (height - padding * 2),
+    temp, hour: i + 6
+  }));
+  const pathData = points.reduce((acc, p, i) => i === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`, "");
 
   return (
-    <button 
-      onClick={() => setIsDark(!isDark)}
-      className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors ml-2 z-50 relative"
-      aria-label="Toggle Theme"
-    >
-      {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-    </button>
+    <div className="p-8 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-3xl overflow-hidden relative mb-10">
+      <div className="flex justify-between items-end mb-6">
+        <div><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-500 mb-1">Atmosphere Pulse</h4><p className="text-3xl font-black italic tracking-tighter uppercase">{hoverIndex !== null ? `${points[hoverIndex].temp}°C` : `${max}°C Peak`}</p></div>
+        <div className="text-right text-[10px] font-black uppercase tracking-widest opacity-40">{hoverIndex !== null ? `${points[hoverIndex].hour}:00` : 'Daylight Cycle'}</div>
+      </div>
+      <div className="relative h-24 group"><svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible"><motion.path d={pathData} fill="none" stroke="url(#g)" strokeWidth="4" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1 }} />
+        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#fbbf24" /><stop offset="50%" stopColor="#38bdf8" /><stop offset="100%" stopColor="#f97316" /></linearGradient></defs>
+        {points.map((p, i) => (<g key={i} onMouseEnter={() => setHoverIndex(i)} onMouseLeave={() => setHoverIndex(null)}><rect x={p.x - 15} y="0" width="30" height={height} fill="transparent" />{hoverIndex === i && (<><circle cx={p.x} cy={p.y} r="6" fill="#14b8a6" /><line x1={p.x} y1={p.y + 10} x2={p.x} y2={height} stroke="#14b8a6" strokeWidth="1" strokeDasharray="4 4" /></>)}</g>))}
+      </svg></div>
+    </div>
   );
 };
 
-// Fallback pool in case RapidAPI key is rate-limited or disabled
-const fallbackPool = {
-  Krabi: {
-    Morning: [
-      { id: 'k_m1', title: 'Tiger Cave Temple Climb', subtitle: 'A challenging climb with rewarding views', category: 'Activity', image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=800&h=400' },
-      { id: 'k_m2', title: 'Ao Nang Beach Walk', subtitle: 'Relaxing morning stroll along the coast', category: 'Activity', image: 'https://images.unsplash.com/photo-1582050041567-9cfdd330d545?auto=format&fit=crop&q=80&w=800&h=400' }
-    ],
-    Afternoon: [
-      { id: 'k_a1', title: 'Railay Beach Rock Climbing', subtitle: 'Climb the iconic limestone cliffs', category: 'Activity', image: 'https://images.unsplash.com/photo-1522163182402-834f871fd851?auto=format&fit=crop&q=80&w=800&h=400' },
-      { id: 'k_a2', title: 'Four Islands Boat Tour', subtitle: 'Explore the stunning nearby islands', category: 'Activity', image: 'https://images.unsplash.com/photo-1605008542797-09d30c5e7cde?auto=format&fit=crop&q=80&w=800&h=400' }
-    ],
-    Evening: [
-      { id: 'k_e1', title: 'Night Market Street Food', subtitle: 'Sample various local delicacies', category: 'Food', image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=800&h=400' },
-      { id: 'k_e2', title: 'Sunset Dinner Cruise', subtitle: 'Romantic dinner on the water', category: 'Food', image: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800&h=400' }
-    ]
-  },
-  Phuket: {
-    Morning: [
-      { id: 'p_m1', title: 'Big Buddha Visit', subtitle: 'Iconic landmark with panoramic views', category: 'Activity', image: 'https://images.unsplash.com/photo-1603566195729-1981615fcc65?auto=format&fit=crop&q=80&w=800&h=400' },
-      { id: 'p_m2', title: 'Old Phuket Town Walk', subtitle: 'Explore Sino-Portuguese architecture', category: 'Activity', image: 'https://images.unsplash.com/photo-1627885012579-24b9a9572de6?auto=format&fit=crop&q=80&w=800&h=400' }
-    ],
-    Afternoon: [
-      { id: 'p_a1', title: 'Phang Nga Bay Tour', subtitle: 'See James Bond Island', category: 'Activity', image: 'https://images.unsplash.com/photo-1605008542797-09d30c5e7cde?auto=format&fit=crop&q=80&w=800&h=400' },
-      { id: 'p_a2', title: 'Elephant Sanctuary', subtitle: 'Ethical elephant interaction', category: 'Activity', image: 'https://images.unsplash.com/photo-1582209675230-f4342410a623?auto=format&fit=crop&q=80&w=800&h=400' }
-    ],
-    Evening: [
-      { id: 'p_e1', title: 'Patong Beach Walking Street', subtitle: 'Vibrant nightlife and food', category: 'Food', image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&q=80&w=800&h=400' },
-      { id: 'p_e2', title: "Mom Tri's Kitchen", subtitle: 'Fine dining with a view', category: 'Food', image: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&q=80&w=800&h=400' }
-    ]
-  }
-};
-
-const TIME_SLOTS = ['Morning', 'Afternoon', 'Evening'];
-
-function useItinerary() {
-  const [location, setLocation] = useState('Krabi');
-  const [itinerary, setItinerary] = useState({});
-  const [lockedItems, setLockedItems] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [dataPool, setDataPool] = useState(fallbackPool['Krabi']);
+// --- Sub-Components ---
+const SystemBootSequence = ({ onComplete }) => {
+  const [step, setStep] = useState(0);
+  const steps = [
+    "Initializing TML Security Protocol...",
+    "Scanning Reasoning Node Latency...",
+    "Validating Expert Proxy Hub...",
+    "Access Granted: TRVLTOO ALPHA-01"
+  ];
 
   useEffect(() => {
-    let active = true;
-
-    const loadData = async () => {
-      setIsLoading(true);
-      
-      // Attempt RapidAPI Foursquare Fetch
-      let fetchedData = await fetchItinerary(location);
-      
-      // Keep data safe if API breaks (or key has no access)
-      if (!fetchedData || !fetchedData.Morning || fetchedData.Morning.length === 0) {
-        fetchedData = fallbackPool[location] || fallbackPool['Krabi'];
-      }
-
-      if (!active) return;
-      
-      setDataPool(fetchedData);
-      
-      const newItinerary = {};
-      const newLockedItems = {};
-      
-      TIME_SLOTS.forEach(slot => {
-        newItinerary[slot] = fetchedData[slot]?.[0] || null;
-        newLockedItems[slot] = false;
-      });
-      
-      setItinerary(newItinerary);
-      setLockedItems(newLockedItems);
-      setIsLoading(false);
-    };
-
-    loadData();
-
-    return () => { active = false; };
-  }, [location]);
-
-  const toggleLock = useCallback((slot) => {
-    setLockedItems(prev => ({ ...prev, [slot]: !prev[slot] }));
-  }, []);
-
-  const reRoll = useCallback((slot) => {
-    if (lockedItems[slot] || !dataPool) return;
-
-    const currentItem = itinerary[slot];
-    const categoryPool = dataPool[slot] || [];
-    const availableItems = categoryPool.filter(item => item.id !== currentItem?.id);
-    
-    if (availableItems.length > 0) {
-      const randomIndex = Math.floor(Math.random() * availableItems.length);
-      setItinerary(prev => ({
-        ...prev,
-        [slot]: availableItems[randomIndex]
-      }));
+    if (step < steps.length) {
+      const timer = setTimeout(() => setStep(s => s + 1), 700);
+      return () => clearTimeout(timer);
+    } else {
+      const timer = setTimeout(onComplete, 800);
+      return () => clearTimeout(timer);
     }
-  }, [itinerary, dataPool, lockedItems]);
+  }, [step, onComplete]);
 
-  return {
-    location,
-    setLocation,
-    itinerary,
-    lockedItems,
-    toggleLock,
-    reRoll,
-    isLoading
-  };
-}
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }} 
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950 text-white font-mono p-10"
+    >
+      <div className="max-w-md w-full space-y-8">
+        <div className="flex items-center space-x-6">
+           <div className="w-16 h-16 rounded-full bg-white text-slate-950 flex items-center justify-center font-black text-2xl shadow-[0_0_40px_rgba(255,255,255,0.3)]">TML</div>
+           <div>
+              <h2 className="text-xl font-black italic tracking-tighter uppercase leading-[0.8]">System Boot</h2>
+              <p className="text-[10px] opacity-40 uppercase tracking-[0.4em] mt-1">Environment: Production</p>
+           </div>
+        </div>
+        
+        <div className="space-y-4">
+           {steps.slice(0, step + 1).map((s, i) => (
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, x: -10 }} 
+                animate={{ opacity: 1, x: 0 }}
+                className={`flex items-center space-x-4 ${i === steps.length - 1 ? 'text-teal-400 font-black' : 'opacity-60'}`}
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${i === steps.length - 1 ? 'bg-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.8)]' : 'bg-white'}`} />
+                <span className="text-xs uppercase tracking-widest">{s}</span>
+              </motion.div>
+           ))}
+        </div>
 
-const getSlotIcon = (slot) => {
-  switch (slot) {
-    case 'Morning': return <Coffee className="w-5 h-5 text-amber-500" />;
-    case 'Afternoon': return <Sun className="w-5 h-5 text-orange-500" />;
-    case 'Evening': return <Moon className="w-5 h-5 text-indigo-500" />;
-    default: return null;
-  }
+        {step >= steps.length && (
+           <motion.div initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} className="h-0.5 bg-teal-500/50 origin-left" />
+        )}
+      </div>
+    </motion.div>
+  );
 };
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15 }
-  }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
-};
-
-const TopographyPattern = ({ className }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-    <defs>
-      <pattern id="topo" width="80" height="40" patternUnits="userSpaceOnUse">
-        <path d="M0 20 Q 20 0, 40 20 T 80 20 M0 0 Q 20 -20, 40 0 T 80 0 M0 40 Q 20 20, 40 40 T 80 40" fill="none" stroke="currentColor" strokeWidth="1" />
-        <path d="M-20 10 Q 0 -10, 20 10 T 60 10 T 100 10 M-20 30 Q 0 10, 20 30 T 60 30 T 100 30" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.4" />
-      </pattern>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#topo)" />
-  </svg>
+const Header = ({ currentView, isDark, onToggleTheme, setView }) => (
+  <header className="fixed top-0 left-0 right-0 z-40 px-6 py-4 md:px-12 backdrop-blur-xl border-b border-white/10 flex items-center justify-between">
+    <div className="flex items-center space-x-12">
+      <div className="w-12 h-12 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xl shadow-2xl cursor-pointer" onClick={() => setView('explore')}>TML</div>
+      <nav className="hidden md:flex items-center space-x-10">
+        {['Explore', 'Plan', 'Community'].map(item => (
+          <button key={item} onClick={() => setView(item.toLowerCase())} className={`text-xs font-black uppercase tracking-[0.3em] transition-colors ${currentView === item.toLowerCase() ? 'text-teal-500' : 'text-slate-400 hover:text-white'}`}>{item}</button>
+        ))}
+      </nav>
+    </div>
+    <div className="flex items-center space-x-6">
+       <button onClick={onToggleTheme} className="p-3 rounded-2xl bg-white/10">{isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-400" />}</button>
+       <button className="hidden md:block px-6 py-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest">Sign In</button>
+    </div>
+  </header>
 );
 
-export default function App() {
-  const { location, setLocation, itinerary, lockedItems, toggleLock, reRoll, isLoading } = useItinerary();
-  const [copied, setCopied] = useState(false);
+const LocationGrid = ({ selected, onSelect }) => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    {LOCATIONS.map((loc, i) => (
+      <motion.button key={loc.id} initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ delay: i * 0.1 }} onClick={() => onSelect(loc.id)} className={`group relative h-80 rounded-[3rem] overflow-hidden border-4 ${selected === loc.id ? 'border-teal-500' : 'border-transparent'}`}>
+        <img src={loc.image} alt={loc.id} className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent" />
+        <div className="absolute bottom-10 left-10 text-left"><h4 className="text-white text-2xl font-black italic tracking-tighter uppercase">{loc.id}</h4><p className="text-white/60 text-[10px] font-bold uppercase tracking-widest">{loc.desc}</p></div>
+      </motion.button>
+    ))}
+  </div>
+);
 
-  const exportToNotes = () => {
-    let md = `# My Perfect Day in ${location}\n\n`;
-    TIME_SLOTS.forEach(slot => {
-      const item = itinerary[slot];
-      if (item) {
-        md += `## ${slot}\n**${item.title}** (${item.category})\n*${item.subtitle}*\n\n`;
-      }
-    });
+const PersonaCard = ({ persona, isSelected, onSelect }) => (
+  <motion.button 
+    type="button"
+    whileHover={{ y: -4 }} 
+    onClick={() => onSelect(persona.id)} 
+    className={`p-8 rounded-[2.5rem] border-2 text-left flex flex-col transition-all shadow-sm hover:shadow-md ${
+      isSelected 
+        ? 'border-teal-500 bg-teal-500 text-white shadow-xl shadow-teal-500/20' 
+        : 'border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 backdrop-blur-md hover:border-teal-400'
+    }`}
+  >
+    <div className={`p-4 rounded-2xl mb-6 flex items-center justify-center w-fit transition-colors ${
+      isSelected ? 'bg-white/20' : 'bg-teal-500/5 dark:bg-white/5 text-teal-500'
+    }`}>
+      <persona.icon className="w-7 h-7" />
+    </div>
+    <h4 className="font-black text-xl uppercase italic tracking-tighter">{persona.id}</h4>
+    <p className={`text-[11px] mt-2 font-bold uppercase tracking-widest leading-snug ${
+      isSelected ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'
+    }`}>
+      {persona.desc}
+    </p>
+  </motion.button>
+);
 
-    navigator.clipboard.writeText(md).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+const CalculatingVibe = ({ messageIndex }) => (
+  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-2xl">
+    <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="mb-10"><Compass className="w-16 h-16 text-teal-500" /></motion.div>
+    <AnimatePresence mode="wait"><motion.p key={messageIndex} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="text-xl font-black italic uppercase italic uppercase text-teal-500">{LOADING_MESSAGES[messageIndex]}</motion.p></AnimatePresence>
+  </motion.div>
+);
+
+const ArrivalStrip = ({ selected, onSelect }) => {
+  const dates = Array.from({ length: 14 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    return d;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center space-x-4">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">02. Select Arrival</h3>
+        <div className="h-px flex-1 bg-white/10 dark:bg-slate-800" />
+      </div>
+      <div className="flex space-x-4 overflow-x-auto pb-6 -mx-6 px-6 no-scrollbar">
+        {dates.map((date, i) => {
+          const isSelected = selected === date.toISOString().split('T')[0];
+          return (
+            <motion.button
+              key={i}
+              whileHover={{ y: -4 }}
+              onClick={() => onSelect(date.toISOString().split('T')[0])}
+              className={`flex-shrink-0 w-24 p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center ${
+                isSelected 
+                  ? 'border-teal-500 bg-teal-500 text-white shadow-xl shadow-teal-500/20' 
+                  : 'border-white/20 bg-white/10 dark:bg-slate-900/40 backdrop-blur-md dark:border-slate-800'
+              } ${!isSelected && 'hover:border-teal-500 shadow-sm'}`}
+            >
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">
+                {date.toLocaleDateString('en-US', { weekday: 'short' })}
+              </span>
+              <span className="text-2xl font-black italic tracking-tighter">
+                {date.getDate()}
+              </span>
+            </motion.button>
+          );
+        })}
+        
+        {/* Manual Date Input Card */}
+        <div className="flex-shrink-0 w-32 relative group">
+           <div className={`absolute inset-0 p-6 rounded-[2rem] border-2 border-dashed transition-all flex flex-col items-center justify-center ${
+              !dates.some(d => d.toISOString().split('T')[0] === selected)
+                ? 'border-teal-500 bg-teal-500/10 text-teal-600'
+                : 'border-white/20 group-hover:border-teal-500 opacity-60'
+           }`}>
+             <h4 className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">Other<br/>Date</h4>
+           </div>
+           <input 
+              type="date" 
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              onChange={(e) => onSelect(e.target.value)}
+           />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+function VibeEngine() {
+  const [isBooting, setIsBooting] = useState(true);
+  const [form, setForm] = useState({ 
+    destination: 'Krabi', 
+    arrivalDate: new Date().toISOString().split('T')[0],
+    persona: 'Solo', 
+    energy: 5, 
+    noctourism: false, 
+    nightIntensity: 5 
+  });
+  const [status, setStatus] = useState('idle');
+  const [expertResult, setExpertResult] = useState(null);
+  const [messageIndex, setMessageIndex] = useState(0);
+  const [view, setView] = useState('explore');
+
+  useEffect(() => { try { performSecurityStartupAudit(); } catch (err) { console.error("🚨 CRITICAL SYSTEM HALT:", err.message); } }, []);
+  useEffect(() => { if (form.noctourism) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [form.noctourism]);
+  useEffect(() => { if (status === 'processing') { const interval = setInterval(() => setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length), 2500); return () => clearInterval(interval); } }, [status]);
+
+  const updateForm = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus('processing');
+    
+    // Simulate Reasoning Logic Engine Delay
+    setTimeout(() => {
+      const mockResult = MOCK_EXPERT_RESULTS[form.persona] || MOCK_EXPERT_RESULTS['Solo'];
+      // Inject environmental reasoning based on date
+      const d = new Date(form.arrivalDate);
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      const adaptiveResult = {
+        ...mockResult,
+        strategy: `${mockResult.strategy} Environmental data for ${d.toLocaleDateString()} predicts high atmospheric clarity. ${isWeekend ? 'Note: Expect elevated local crowd density on this scheduled arrival.' : 'Note: Optimal arrival node for low-density corridor access.'}`
+      };
+      setExpertResult(adaptiveResult);
+      setStatus('completed');
+    }, 2500);
+
+    /* 
+    try {
+      const sanitizedForm = sanitizeVibeData(form);
+      const docRef = await addDoc(collection(db, "itineraries"), { ...sanitizedForm, status: "processing", createdAt: new Date().toISOString() });
+      await fetch(N8N_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ docId: docRef.id, ...sanitizedForm }) });
+      const unsub = onSnapshot(doc(db, "itineraries", docRef.id), (docSnap) => { if (docSnap.exists() && docSnap.data().status === "completed") { setExpertResult(docSnap.data().expert_result); setStatus('completed'); unsub(); } });
+    } catch (err) { console.error("Vibe Engine Error:", err); setStatus('idle'); }
+    */
+  };
+
+  const renderContent = () => {
+    if (view === 'explore') return (
+      <section className="space-y-20">
+        <div className="text-center md:text-left">
+          <h2 className="text-5xl font-black italic uppercase leading-[0.9] mb-4">Explore <span className="text-teal-500">Coordinates</span></h2>
+          <p className="text-sm opacity-60">Select your destination and arrival nodal point for reasoning.</p>
+        </div>
+        
+        <div className="space-y-12">
+          <div className="flex items-center space-x-4"><h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">01. Destination Selection</h3><div className="h-px flex-1 bg-slate-200 dark:bg-white/10" /></div>
+          <LocationGrid selected={form.destination} onSelect={(id) => updateForm('destination', id)} />
+        </div>
+
+        <ArrivalStrip selected={form.arrivalDate} onSelect={(date) => updateForm('arrivalDate', date)} />
+
+        <div className="flex justify-center pt-10 pb-20">
+           <motion.button 
+             whileHover={{ scale: 1.02 }}
+             whileTap={{ scale: 0.98 }}
+             onClick={() => setView('plan')}
+             disabled={!form.destination || !form.arrivalDate}
+             className="relative group px-24 py-10 rounded-[3rem] bg-white/20 dark:bg-white/5 backdrop-blur-3xl border-2 border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white font-black text-3xl uppercase italic tracking-tighter shadow-2xl transition-all flex items-center space-x-6 disabled:opacity-20 disabled:cursor-not-allowed group"
+           >
+             <div className="absolute inset-0 rounded-[3rem] border-b-4 border-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+             <span className="relative z-10">Configure Vibe</span>
+             <div className="relative z-10 p-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 transform group-hover:rotate-12 transition-transform">
+                <ArrowRight className="w-8 h-8" />
+             </div>
+           </motion.button>
+        </div>
+      </section>
+    );
+    if (view === 'plan') return (
+      <section className="space-y-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6"><div><h2 className="text-5xl font-black italic uppercase leading-[0.9] mb-4">Vibe <span className="text-teal-500">Orchestrator</span></h2><p className="text-sm opacity-60">Consulting {form.destination} knowledge base...</p></div><button onClick={() => setView('explore')} className="px-6 py-2 rounded-full border border-teal-500/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-widest hover:bg-teal-500/10">Change Destination</button></div>
+        <div className={`p-10 md:p-20 rounded-[4rem] backdrop-blur-3xl border border-white/20 transition-colors shadow-2xl ${form.noctourism ? 'bg-indigo-900/40' : 'bg-white/60'}`}>
+          <form onSubmit={handleSubmit} className="space-y-24">
+            <div className="space-y-12">
+               <div className="flex items-center space-x-4"><h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">01. Persona Profile</h3><div className="h-px flex-1 bg-slate-200 dark:bg-white/10" /></div>
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">{PERSONAS.map(p => <PersonaCard key={p.id} persona={p} isSelected={form.persona === p.id} onSelect={(id) => updateForm('persona', id)} />)}</div>
+            </div>
+
+            <div className="space-y-16">
+               <div className="flex items-center justify-between">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">02. Energy Intensity</h3>
+                  <span className="text-4xl font-black italic text-teal-500 tracking-tighter uppercase">{form.energy}/10</span>
+               </div>
+               <div className="space-y-12 text-center">
+                  <input 
+                     type="range" min="1" max="10" step="1" 
+                     value={form.energy} 
+                     onChange={(e) => updateForm('energy', parseInt(e.target.value))} 
+                     className="w-full h-4 bg-slate-200 dark:bg-slate-900/50 rounded-full appearance-none cursor-pointer accent-teal-500 border border-slate-300 dark:border-white/10" 
+                  />
+                  <div className="h-12 flex items-center justify-center overflow-hidden">
+                     <AnimatePresence mode="wait">
+                        <motion.p 
+                           key={form.energy}
+                           initial={{ y: 20, opacity: 0 }}
+                           animate={{ y: 0, opacity: 1 }}
+                           exit={{ y: -20, opacity: 0 }}
+                           className="text-3xl font-black italic tracking-tighter uppercase text-slate-400 dark:text-white/60"
+                        >
+                           {ENERGY_LABELS[form.energy - 1]}
+                        </motion.p>
+                     </AnimatePresence>
+                  </div>
+               </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
+              <div className="space-y-10">
+                 <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">03. Mode Arbiter</h3>
+                 <div onClick={() => updateForm('noctourism', !form.noctourism)} className={`p-8 rounded-[3.5rem] border-2 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${form.noctourism ? 'border-indigo-500 bg-indigo-500 text-white shadow-xl shadow-indigo-500/30' : 'border-slate-200 dark:border-white/20 bg-white/10 hover:border-teal-400'}`}>
+                    <div className="flex items-center space-x-6">
+                       <div className={`p-5 rounded-2xl ${form.noctourism ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-teal-600'}`}>{form.noctourism ? <Moon className="w-8 h-8" /> : <Sun className="w-8 h-8" />}</div>
+                       <h4 className="font-black text-2xl italic uppercase tracking-tighter">Noctourism</h4>
+                    </div>
+                    <div className={`w-16 h-8 rounded-full p-1.5 transition-colors ${form.noctourism ? 'bg-white/40' : 'bg-slate-200 dark:bg-slate-800'}`}><motion.div animate={{ x: form.noctourism ? 32 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" /></div>
+                 </div>
+              </div>
+              
+              {form.noctourism ? (
+                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-10">
+                    <div className="flex items-center justify-between font-black uppercase tracking-widest leading-tight text-center"><h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">04. Night Pressure</h3><span className="text-2xl font-black italic text-indigo-400">{form.nightIntensity}/10</span></div>
+                    <input type="range" min="1" max="10" step="1" value={form.nightIntensity} onChange={(e) => updateForm('nightIntensity', parseInt(e.target.value))} className="w-full h-3 bg-indigo-500/20 rounded-full appearance-none cursor-pointer accent-indigo-500" />
+                 </motion.div>
+              ) : (
+                 <div className="flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[3.5rem] opacity-20">
+                    <span className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">Nocturnal Sector<br/>Offline</span>
+                 </div>
+              )}
+            </div>
+            
+            <div className="flex justify-center pt-10"><button type="submit" className={`px-24 py-12 rounded-full font-black text-3xl uppercase italic tracking-tighter shadow-2xl transition-all ${form.noctourism ? 'bg-indigo-500 text-white shadow-indigo-500/40 hover:bg-vigo-400 active:scale-95' : 'bg-slate-900 text-white'}`}>Reason Trip</button></div>
+          </form>
+        </div>
+      </section>
+    );
+    
+    return <section className="py-40 text-center opacity-40 italic">Coming Soon.</section>;
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 relative">
-      {/* Absolute Positioned Background SVG Containers */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden flex justify-between">
-        <div className="w-[30%] h-full opacity-10 dark:opacity-[0.04]">
-          <TopographyPattern className="text-teal-600 dark:text-slate-300" />
-        </div>
-        <div className="w-[30%] h-full opacity-10 dark:opacity-[0.04] scale-x-[-1]">
-          <TopographyPattern className="text-teal-600 dark:text-slate-300" />
-        </div>
-      </div>
-
-      {/* Header */}
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-50 shadow-sm border-b border-teal-100 dark:border-slate-800 transition-colors">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between relative z-10">
-          <div className="flex items-center space-x-2">
-            <div className="bg-teal-500 text-white p-2 rounded-xl">
-              <MapPin className="w-6 h-6" />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight transition-colors">trvltoo</h1>
-          </div>
-          
-          <div className="flex items-center">
-            {/* Location Switcher */}
-            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl transition-colors">
-              {['Krabi', 'Phuket'].map(loc => (
-                <button
-                  key={loc}
-                  onClick={() => setLocation(loc)}
-                  className={`px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                    location === loc 
-                      ? 'bg-white dark:bg-slate-700 text-teal-600 dark:text-teal-400 shadow-sm' 
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
-                  }`}
+    <div className={`min-h-screen transition-all duration-1000 ${form.noctourism ? 'bg-indigo-950 text-indigo-50' : 'bg-sky-50 text-slate-900'} pt-32 pb-12 px-6 md:px-12 font-sans selection:bg-teal-500/30`}>
+      <AnimatePresence>
+         {isBooting && <SystemBootSequence onComplete={() => setIsBooting(false)} />}
+      </AnimatePresence>
+      
+      <Header currentView={view} isDark={form.noctourism} onToggleTheme={() => updateForm('noctourism', !form.noctourism)} setView={setView} />
+      <AnimatePresence>{status === 'processing' && <CalculatingVibe messageIndex={messageIndex} />}</AnimatePresence>
+      <div className="max-w-7xl mx-auto"><main>{renderContent()}
+        <AnimatePresence>{status === 'completed' && expertResult && (
+          <motion.section initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="z-50 fixed inset-0 overflow-y-auto bg-slate-950 p-6 md:p-12">
+            <div className="max-w-6xl mx-auto space-y-12">
+              <header className="flex justify-between items-start">
+                <div>
+                   <h5 className="text-[10px] font-black uppercase tracking-[0.6em] text-teal-500 mb-2">Expert Reasoning</h5>
+                   <h2 className="text-6xl font-black italic tracking-tighter uppercase text-white leading-[0.8]">The Conclusion</h2>
+                </div>
+                <button 
+                  onClick={() => setStatus('idle')} 
+                  className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 transition-all flex items-center justify-center text-white border border-white/20 hover:scale-110 active:scale-95 group"
                 >
-                  {loc}
+                  <ArrowRight className="w-8 h-8 rotate-180 group-hover:-translate-x-1 transition-transform" />
                 </button>
-              ))}
+              </header>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                 <div className="lg:col-span-2 space-y-12">
+                    <WeatherTimeline hourly={expertResult.hourly} />
+                    
+                    <div className="p-10 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-3xl">
+                       <h5 className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-500 mb-6">Expert Logic Strategy</h5>
+                       <p className="text-2xl font-medium tracking-tight text-white/90 leading-relaxed italic uppercase italic tracking-tighter uppercase">{expertResult.strategy}</p>
+                    </div>
+                 </div>
+
+                 <div className="space-y-10">
+                    <div className="relative pl-12 border-l border-white/10 space-y-20 py-10">
+                       <div className="absolute top-0 left-[-5px] w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
+                       <div className="absolute bottom-0 left-[-5px] w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+
+                       <div className="space-y-4">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">01. Morning Rush</span>
+                          <h4 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-tight">{expertResult.morning}</h4>
+                       </div>
+                       
+                       <div className="space-y-4">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-sky-400">02. Noon Zenith</span>
+                          <h4 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-tight">{expertResult.afternoon}</h4>
+                       </div>
+
+                       <div className="space-y-4">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">03. Evening Fade</span>
+                          <h4 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-tight">{expertResult.evening}</h4>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+
+              <footer className="pt-12 border-t border-white/5 flex justify-between items-center opacity-30 mt-20">
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">Reasoning Engine: Alpha-01</span>
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">Thailand Coordinates: {form.destination}</span>
+              </footer>
             </div>
-            
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-3xl mx-auto px-6 mt-8 pb-12 relative z-10">
-        <div className="mb-8">
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <h2 className="text-3xl font-extrabold text-slate-800 dark:text-slate-100 transition-colors">Your Perfect Day in {location}</h2>
-            <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium transition-colors">Curated activities to match your style. Re-roll until it's perfect.</p>
-          </motion.div>
-        </div>
-
-        {/* Loading Spinner or Timeline */}
-        {isLoading ? (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-32"
-          >
-            <Leaf className="w-12 h-12 text-teal-500 animate-pulse mb-6 drop-shadow-md" />
-            <span className="text-slate-500 dark:text-slate-400 font-semibold tracking-wide text-lg">Foraging for the best spots...</span>
-          </motion.div>
-        ) : (
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="space-y-8 relative before:absolute before:inset-0 before:ml-6 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-teal-100 dark:before:from-teal-900 before:via-teal-200 dark:before:via-teal-800 before:to-transparent"
-          >
-            {TIME_SLOTS.map((slot) => {
-              const item = itinerary[slot];
-              if (!item) return null;
-              const isLocked = lockedItems[slot];
-
-              return (
-                <motion.div 
-                  key={slot}
-                  variants={itemVariants}
-                  layout
-                  className="relative flex flex-col md:flex-row items-start md:items-center justify-between md:justify-normal md:odd:flex-row-reverse group"
-                >
-                  
-                  {/* Timeline Node */}
-                  <motion.div layout className="flex items-center justify-center w-12 h-12 absolute left-0 md:relative md:left-auto rounded-full border-4 border-slate-50 dark:border-slate-900 bg-teal-50 dark:bg-slate-800 shadow-md shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10 transition-colors ml-0 md:ml-0">
-                    {getSlotIcon(slot)}
-                  </motion.div>
-
-                  {/* Card Container */}
-                  <div className="flex-1 w-full pl-16 md:pl-0 md:w-[calc(50%-3rem)] md:p-4">
-                    <AnimatePresence mode="popLayout">
-                      <motion.div
-                        key={item.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -20, filter: 'blur(4px)' }}
-                        transition={{ duration: 0.4, type: 'spring', bounce: 0.3 }}
-                        className="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-xl shadow-teal-500/5 group border border-teal-50 dark:border-slate-700 hover:border-teal-100 dark:hover:border-slate-600 transition-colors w-full"
-                      >
-                        {/* Card Image Header */}
-                        <div className="h-48 w-full relative">
-                          <img 
-                            src={item.image} 
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-5">
-                            <span className="text-white/90 text-sm font-semibold uppercase tracking-wider mb-1">
-                              {slot} · {item.category}
-                            </span>
-                          </div>
-                          
-                          {/* Actions Overlay */}
-                          <div className="absolute top-4 right-4 flex space-x-2">
-                            <button
-                              onClick={() => toggleLock(slot)}
-                              className={`p-2.5 rounded-full backdrop-blur-md transition-all duration-300 ${
-                                isLocked 
-                                  ? 'bg-amber-400 text-white' 
-                                  : 'bg-white/20 text-white hover:bg-white/40'
-                              }`}
-                              aria-label={isLocked ? "Unlock item" : "Lock item"}
-                            >
-                              <Star className="w-5 h-5" fill={isLocked ? "currentColor" : "none"} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Card Body */}
-                        <div className="p-5 md:p-6">
-                          <div className="flex justify-between items-start gap-4">
-                            <div>
-                              <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 leading-tight block transition-colors">{item.title}</h3>
-                              <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm leading-relaxed transition-colors line-clamp-2">{item.subtitle}</p>
-                            </div>
-                            <button
-                              onClick={() => reRoll(slot)}
-                              disabled={isLocked}
-                              className={`shrink-0 p-3 rounded-2xl transition-all duration-300 ${
-                                isLocked 
-                                  ? 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed' 
-                                  : 'bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 hover:bg-teal-100 dark:hover:bg-teal-900/60 active:scale-95'
-                              }`}
-                              aria-label="Re-roll activity"
-                            >
-                              <Dices className={`w-6 h-6 ${isLocked ? '' : 'group-hover:rotate-12 transition-transform'}`} />
-                            </button>
-                          </div>
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
-
-        {/* Action Button: Export to Notes */}
-        {!isLoading && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="mt-12 text-center pb-8 border-t border-teal-100 dark:border-slate-800 pt-8 transition-colors"
-          >
-            <button 
-              onClick={exportToNotes}
-              className="inline-flex items-center space-x-2 bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-2xl font-semibold shadow-lg shadow-teal-500/30 transition-all active:scale-95"
-            >
-              {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-              <span>{copied ? 'Copied to Clipboard!' : 'Export to Notes'}</span>
-            </button>
-          </motion.div>
-        )}
-
-      </main>
+          </motion.section>
+        )}</AnimatePresence>
+      </main></div>
     </div>
+  );
+}
+
+export default function SafeVibeEngine() {
+  return (
+    <SecurityErrorBoundary>
+      <VibeEngine />
+    </SecurityErrorBoundary>
   );
 }

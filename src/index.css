@@ -14,3 +14,17 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   margin: 0;
 }
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.mask-fade-edges {
+  mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+}
