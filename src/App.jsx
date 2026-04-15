@@ -4,12 +4,26 @@ import {
   User, Heart, Utensils, Laptop,
   Moon, Sun, ArrowRight, Compass,
   MapPin, Clock, CheckCircle2,
-  Dices, Star, Lock, Download
+  Dices, Star, Lock, Download, Share2, FileText
 } from 'lucide-react';
 import { db } from './firebase';
 import { collection, addDoc, onSnapshot, doc } from 'firebase/firestore';
 import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
 import { fetchItinerary, fetchWeather } from './apiService';
+import { signInWithGoogle, signOutUser, subscribeToAuthState } from './auth';
+import { saveTrip } from './supabase';
+import { jsPDF } from 'jspdf';
+import {
+  trackItineraryGenerated,
+  trackActivityRerolled,
+  trackActivityLocked,
+  trackExport,
+  trackShareLink,
+} from './analytics';
+import imgPhuket from './assets/phuket.png';
+import imgKrabi from './assets/krabi.png';
+import imgBangkok from './assets/bangkok.png';
+import imgChiangMai from './assets/chiang_mai.png';
 
 // --- Security Protocol Components (#7 Error Boundaries) ---
 class SecurityErrorBoundary extends React.Component {
@@ -43,10 +57,10 @@ const PERSONAS = [
 ];
 
 const LOCATIONS = [
-  { id: 'Phuket', image: '/src/assets/phuket.png', desc: 'Islands & Nightlife' },
-  { id: 'Krabi', image: '/src/assets/krabi.png', desc: 'Cliffs & Caves' },
-  { id: 'Bangkok', image: '/src/assets/bangkok.png', desc: 'City & Culture' },
-  { id: 'Chiang Mai', image: '/src/assets/chiang_mai.png', desc: 'Mountains & Temples' }
+  { id: 'Phuket', image: imgPhuket, desc: 'Islands & Nightlife' },
+  { id: 'Krabi', image: imgKrabi, desc: 'Cliffs & Caves' },
+  { id: 'Bangkok', image: imgBangkok, desc: 'City & Culture' },
+  { id: 'Chiang Mai', image: imgChiangMai, desc: 'Mountains & Temples' },
 ];
 
 const LOADING_MESSAGES = ["Consulting Agent...", "Scanning hidden gems...", "Optimizing energy...", "Finalizing your day..."];
@@ -183,7 +197,7 @@ const SystemBootSequence = ({ onComplete }) => {
   );
 };
 
-const Header = ({ currentView, isDark, onToggleTheme, setView }) => (
+const Header = ({ currentView, isDark, onToggleTheme, setView, user, onSignIn, onSignOut }) => (
   <header className="fixed top-0 left-0 right-0 z-40 px-6 py-4 md:px-12 backdrop-blur-xl border-b border-white/10 flex items-center justify-between">
     <div className="flex items-center space-x-12">
       <div className="w-12 h-12 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xl shadow-2xl cursor-pointer" onClick={() => setView('explore')}>TML</div>
@@ -193,9 +207,18 @@ const Header = ({ currentView, isDark, onToggleTheme, setView }) => (
         ))}
       </nav>
     </div>
-    <div className="flex items-center space-x-6">
-       <button onClick={onToggleTheme} className="p-3 rounded-2xl bg-white/10">{isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-400" />}</button>
-       <button className="hidden md:block px-6 py-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest">Sign In</button>
+    <div className="flex items-center space-x-4">
+      <button onClick={onToggleTheme} className="p-3 rounded-2xl bg-white/10">{isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-400" />}</button>
+      {user ? (
+        <div className="flex items-center space-x-3">
+          <img src={user.photoURL} alt={user.displayName} className="w-9 h-9 rounded-full border-2 border-teal-500" referrerPolicy="no-referrer" />
+          <button onClick={onSignOut} className="hidden md:block px-5 py-2 rounded-full border border-white/20 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white hover:border-white/40 transition-colors">Sign Out</button>
+        </div>
+      ) : (
+        <button onClick={onSignIn} className="hidden md:flex items-center space-x-2 px-6 py-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:opacity-80 transition-opacity">
+          <span>Sign In</span>
+        </button>
+      )}
     </div>
   </header>
 );
@@ -371,8 +394,10 @@ function VibeEngine() {
   const [weather, setWeather] = useState(null);
   const [messageIndex, setMessageIndex] = useState(0);
   const [view, setView] = useState('explore');
+  const [user, setUser] = useState(null);
 
   useEffect(() => { try { performSecurityStartupAudit(); } catch (err) { console.error("🚨 CRITICAL SYSTEM HALT:", err.message); } }, []);
+  useEffect(() => subscribeToAuthState(setUser), []);
   useEffect(() => { if (form.noctourism) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [form.noctourism]);
   useEffect(() => { if (status === 'processing') { const interval = setInterval(() => setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length), 2500); return () => clearInterval(interval); } }, [status]);
 
@@ -386,12 +411,14 @@ function VibeEngine() {
     let next;
     do { next = Math.floor(Math.random() * pool.length); } while (next === picks[slot] && pool.length > 1);
     setPicks(prev => ({ ...prev, [slot]: next }));
+    trackActivityRerolled(slot, form.destination);
   };
 
   const handleToggleLock = (id) => {
     setLocked(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
+      if (!next.has(id)) trackActivityLocked(id, form.destination);
       return next;
     });
   };
@@ -417,21 +444,108 @@ function VibeEngine() {
     URL.revokeObjectURL(url);
   };
 
+  const exportPDF = () => {
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    const slots = ['Morning', 'Afternoon', 'Evening'];
+    const colors = { Morning: [251, 191, 36], Afternoon: [56, 189, 248], Evening: [99, 102, 241] };
+
+    // Header
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 595, 841, 'F');
+    doc.setTextColor(20, 184, 166);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TRVLTOO — ITINERARY', 40, 50);
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(32);
+    doc.text(form.destination.toUpperCase(), 40, 90);
+    doc.setFontSize(9);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`${form.arrivalDate}  ·  ${form.persona}  ·  ${form.budget}`, 40, 110);
+
+    // Divider
+    doc.setDrawColor(255, 255, 255, 20);
+    doc.line(40, 125, 555, 125);
+
+    let y = 155;
+    slots.forEach((slot) => {
+      const act = pools[slot]?.[picks[slot]];
+      const [r, g, b] = colors[slot];
+      doc.setTextColor(r, g, b);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text(slot.toUpperCase(), 40, y);
+      y += 18;
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.text(act?.title ?? 'No activity selected', 40, y);
+      y += 16;
+      doc.setTextColor(120, 120, 120);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${act?.subtitle ?? ''}  ·  ${act?.category ?? ''}`, 40, y);
+      y += 40;
+    });
+
+    // Footer
+    doc.setTextColor(60, 60, 60);
+    doc.setFontSize(8);
+    doc.text('Generated by TRVLTOO', 40, 810);
+
+    doc.save(`trvltoo-${form.destination.toLowerCase().replace(' ', '-')}.pdf`);
+    trackExport('pdf', form.destination);
+  };
+
+  const [shareCopied, setShareCopied] = useState(false);
+  const copyShareLink = () => {
+    const params = new URLSearchParams({
+      dest: form.destination,
+      date: form.arrivalDate,
+      persona: form.persona,
+      budget: form.budget,
+    });
+    const url = `${window.location.origin}${window.location.pathname}?${params}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2500);
+      trackShareLink(form.destination);
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('processing');
     setLocked(new Set());
     try {
       const sanitizedForm = sanitizeVibeData(form);
+
+      // If the n8n agent is configured, use it; otherwise fall back to the
+      // curated + Foursquare data pipeline in apiService.
+      const n8nUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
+      const itineraryPromise = n8nUrl
+        ? fetch(n8nUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sanitizedForm),
+          })
+            .then(r => r.json())
+            .catch(() => fetchItinerary(sanitizedForm)) // fallback on n8n failure
+        : fetchItinerary(sanitizedForm);
+
       const [itinerary, weatherData] = await Promise.all([
-        fetchItinerary(sanitizedForm),
+        itineraryPromise,
         fetchWeather(sanitizedForm.destination),
       ]);
+
       const safeItinerary = itinerary || { Morning: [], Afternoon: [], Evening: [] };
+      const initialPicks = { Morning: 0, Afternoon: 0, Evening: 0 };
       setPools(safeItinerary);
-      setPicks({ Morning: 0, Afternoon: 0, Evening: 0 });
+      setPicks(initialPicks);
       setWeather(weatherData);
       setStatus('completed');
+      trackItineraryGenerated(sanitizedForm.destination, sanitizedForm.persona, sanitizedForm.budget);
+      // Persist to Supabase (fire-and-forget, non-blocking)
+      if (user) saveTrip(user.uid, sanitizedForm, safeItinerary, initialPicks);
     } catch (err) {
       console.error("Vibe Engine Error:", err);
       setStatus('idle');
@@ -601,7 +715,7 @@ function VibeEngine() {
          {isBooting && <SystemBootSequence onComplete={() => setIsBooting(false)} />}
       </AnimatePresence>
       
-      <Header currentView={view} isDark={form.noctourism} onToggleTheme={() => updateForm('noctourism', !form.noctourism)} setView={setView} />
+      <Header currentView={view} isDark={form.noctourism} onToggleTheme={() => updateForm('noctourism', !form.noctourism)} setView={setView} user={user} onSignIn={signInWithGoogle} onSignOut={signOutUser} />
       <AnimatePresence>{status === 'processing' && <CalculatingVibe messageIndex={messageIndex} />}</AnimatePresence>
       <div className="max-w-7xl mx-auto"><main>{renderContent()}
         <AnimatePresence>{status === 'completed' && (
@@ -625,18 +739,16 @@ function VibeEngine() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 mt-4">
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={exportMarkdown}
-                    title="Export to Markdown"
-                    className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all"
-                  >
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={copyShareLink} title="Copy share link" className={`p-4 rounded-2xl border transition-all ${shareCopied ? 'bg-teal-500 border-teal-400' : 'bg-white/10 hover:bg-white/20 border-white/10'}`}>
+                    <Share2 className="w-5 h-5 text-white" />
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={exportPDF} title="Export to PDF" className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all">
+                    <FileText className="w-5 h-5 text-white" />
+                  </motion.button>
+                  <motion.button whileTap={{ scale: 0.95 }} onClick={exportMarkdown} title="Export to Markdown" className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all">
                     <Download className="w-5 h-5 text-white" />
                   </motion.button>
-                  <button
-                    onClick={() => { setStatus('idle'); setLocked(new Set()); }}
-                    className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center border border-white/10 transition-all group"
-                  >
+                  <button onClick={() => { setStatus('idle'); setLocked(new Set()); }} className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center border border-white/10 transition-all group">
                     <ArrowRight className="w-6 h-6 text-white rotate-180 group-hover:-translate-x-1 transition-transform" />
                   </button>
                 </div>
