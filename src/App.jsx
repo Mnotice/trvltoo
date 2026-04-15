@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  User, Heart, Utensils, Laptop, 
-  Moon, Sun, ArrowRight, Compass, 
-  MapPin, Clock, CheckCircle2
+import {
+  User, Heart, Utensils, Laptop,
+  Moon, Sun, ArrowRight, Compass,
+  MapPin, Clock, CheckCircle2,
+  Dices, Star, Lock, Download
 } from 'lucide-react';
 import { db } from './firebase';
 import { collection, addDoc, onSnapshot, doc } from 'firebase/firestore';
 import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
+import { fetchItinerary, fetchWeather } from './apiService';
 
 // --- Security Protocol Components (#7 Error Boundaries) ---
 class SecurityErrorBoundary extends React.Component {
@@ -242,6 +244,58 @@ const CalculatingVibe = ({ messageIndex }) => (
   </motion.div>
 );
 
+const ItineraryCard = ({ activity, isLocked, onToggleLock }) => (
+  <motion.div layout className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-white/5 group">
+    <div className="h-52 overflow-hidden">
+      <img src={activity.image} alt={activity.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+    </div>
+    <button
+      onClick={() => onToggleLock(activity.id)}
+      className={`absolute top-4 right-4 p-2.5 rounded-full backdrop-blur-sm border transition-all ${
+        isLocked
+          ? 'bg-teal-500 border-teal-400 text-white shadow-lg shadow-teal-500/40'
+          : 'bg-black/40 border-white/10 text-white/60 hover:bg-black/60 hover:text-white'
+      }`}
+    >
+      {isLocked ? <Lock className="w-4 h-4" /> : <Star className="w-4 h-4" />}
+    </button>
+    <div className="p-6 space-y-2">
+      <span className="text-[9px] font-black uppercase tracking-widest text-teal-400">{activity.category}</span>
+      <h4 className="text-xl font-black italic tracking-tighter uppercase text-white leading-tight">{activity.title}</h4>
+      <p className="text-[11px] text-white/50 font-medium uppercase tracking-wide flex items-center gap-1.5">
+        <MapPin className="w-3 h-3 flex-shrink-0" />{activity.subtitle}
+      </p>
+    </div>
+  </motion.div>
+);
+
+const SlotSection = ({ label, color, activity, isLocked, onToggleLock, onReroll, canReroll }) => (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center space-x-3">
+        <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${color}`}>{label}</span>
+        <div className="h-px w-12 bg-white/10" />
+      </div>
+      <motion.button
+        whileTap={{ rotate: 180, scale: 0.9 }}
+        onClick={onReroll}
+        disabled={isLocked || !canReroll}
+        title={isLocked ? 'Unlock to re-roll' : 'Re-roll activity'}
+        className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+      >
+        <Dices className="w-5 h-5 text-white" />
+      </motion.button>
+    </div>
+    {activity ? (
+      <ItineraryCard activity={activity} isLocked={isLocked} onToggleLock={onToggleLock} />
+    ) : (
+      <div className="h-52 rounded-[2rem] border-2 border-dashed border-white/10 flex items-center justify-center">
+        <span className="text-[10px] font-black uppercase tracking-widest text-white/20">No activities found</span>
+      </div>
+    )}
+  </div>
+);
+
 const ArrivalStrip = ({ selected, onSelect }) => {
   const dates = Array.from({ length: 14 }).map((_, i) => {
     const d = new Date();
@@ -301,16 +355,20 @@ const ArrivalStrip = ({ selected, onSelect }) => {
 
 function VibeEngine() {
   const [isBooting, setIsBooting] = useState(true);
-  const [form, setForm] = useState({ 
-    destination: 'Krabi', 
+  const [form, setForm] = useState({
+    destination: 'Krabi',
     arrivalDate: new Date().toISOString().split('T')[0],
-    persona: 'Solo', 
-    energy: 5, 
-    noctourism: false, 
-    nightIntensity: 5 
+    persona: 'Solo',
+    budget: '$$',
+    energy: 5,
+    noctourism: false,
+    nightIntensity: 5
   });
   const [status, setStatus] = useState('idle');
-  const [expertResult, setExpertResult] = useState(null);
+  const [pools, setPools] = useState({ Morning: [], Afternoon: [], Evening: [] });
+  const [picks, setPicks] = useState({ Morning: 0, Afternoon: 0, Evening: 0 });
+  const [locked, setLocked] = useState(new Set());
+  const [weather, setWeather] = useState(null);
   const [messageIndex, setMessageIndex] = useState(0);
   const [view, setView] = useState('explore');
 
@@ -320,32 +378,64 @@ function VibeEngine() {
 
   const updateForm = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
 
+  const handleReroll = (slot) => {
+    const pool = pools[slot];
+    if (!pool || pool.length <= 1) return;
+    const currentActivity = pool[picks[slot]];
+    if (currentActivity && locked.has(currentActivity.id)) return;
+    let next;
+    do { next = Math.floor(Math.random() * pool.length); } while (next === picks[slot] && pool.length > 1);
+    setPicks(prev => ({ ...prev, [slot]: next }));
+  };
+
+  const handleToggleLock = (id) => {
+    setLocked(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const exportMarkdown = () => {
+    const lines = [
+      `# TRVLTOO — ${form.destination} Itinerary`,
+      `**Date:** ${form.arrivalDate} | **Persona:** ${form.persona} | **Budget:** ${form.budget}`,
+      '',
+      ...['Morning', 'Afternoon', 'Evening'].map(slot => {
+        const act = pools[slot]?.[picks[slot]];
+        return act
+          ? `## ${slot}\n**${act.title}**\n${act.subtitle} — _${act.category}_\n`
+          : `## ${slot}\n_No activity selected_\n`;
+      }),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `trvltoo-${form.destination.toLowerCase().replace(' ', '-')}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('processing');
-    
-    // Simulate Reasoning Logic Engine Delay
-    setTimeout(() => {
-      const mockResult = MOCK_EXPERT_RESULTS[form.persona] || MOCK_EXPERT_RESULTS['Solo'];
-      // Inject environmental reasoning based on date
-      const d = new Date(form.arrivalDate);
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      const adaptiveResult = {
-        ...mockResult,
-        strategy: `${mockResult.strategy} Environmental data for ${d.toLocaleDateString()} predicts high atmospheric clarity. ${isWeekend ? 'Note: Expect elevated local crowd density on this scheduled arrival.' : 'Note: Optimal arrival node for low-density corridor access.'}`
-      };
-      setExpertResult(adaptiveResult);
-      setStatus('completed');
-    }, 2500);
-
-    /* 
+    setLocked(new Set());
     try {
       const sanitizedForm = sanitizeVibeData(form);
-      const docRef = await addDoc(collection(db, "itineraries"), { ...sanitizedForm, status: "processing", createdAt: new Date().toISOString() });
-      await fetch(N8N_WEBHOOK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ docId: docRef.id, ...sanitizedForm }) });
-      const unsub = onSnapshot(doc(db, "itineraries", docRef.id), (docSnap) => { if (docSnap.exists() && docSnap.data().status === "completed") { setExpertResult(docSnap.data().expert_result); setStatus('completed'); unsub(); } });
-    } catch (err) { console.error("Vibe Engine Error:", err); setStatus('idle'); }
-    */
+      const [itinerary, weatherData] = await Promise.all([
+        fetchItinerary(sanitizedForm),
+        fetchWeather(sanitizedForm.destination),
+      ]);
+      const safeItinerary = itinerary || { Morning: [], Afternoon: [], Evening: [] };
+      setPools(safeItinerary);
+      setPicks({ Morning: 0, Afternoon: 0, Evening: 0 });
+      setWeather(weatherData);
+      setStatus('completed');
+    } catch (err) {
+      console.error("Vibe Engine Error:", err);
+      setStatus('idle');
+    }
   };
 
   const renderContent = () => {
@@ -382,67 +472,121 @@ function VibeEngine() {
     );
     if (view === 'plan') return (
       <section className="space-y-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6"><div><h2 className="text-5xl font-black italic uppercase leading-[0.9] mb-4">Vibe <span className="text-teal-500">Orchestrator</span></h2><p className="text-sm opacity-60">Consulting {form.destination} knowledge base...</p></div><button onClick={() => setView('explore')} className="px-6 py-2 rounded-full border border-teal-500/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-widest hover:bg-teal-500/10">Change Destination</button></div>
-        <div className={`p-10 md:p-20 rounded-[4rem] backdrop-blur-3xl border border-white/20 transition-colors shadow-2xl ${form.noctourism ? 'bg-indigo-900/40' : 'bg-white/60'}`}>
-          <form onSubmit={handleSubmit} className="space-y-24">
-            <div className="space-y-12">
-               <div className="flex items-center space-x-4"><h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">01. Persona Profile</h3><div className="h-px flex-1 bg-slate-200 dark:bg-white/10" /></div>
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">{PERSONAS.map(p => <PersonaCard key={p.id} persona={p} isSelected={form.persona === p.id} onSelect={(id) => updateForm('persona', id)} />)}</div>
-            </div>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h2 className="text-5xl font-black italic uppercase leading-[0.9] mb-4">Trip <span className="text-teal-500">Customization</span></h2>
+            <p className="text-sm opacity-60">Configure your travel identity for {form.destination}.</p>
+          </div>
+          <button onClick={() => setView('explore')} className="px-6 py-2 rounded-full border border-teal-500/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-widest hover:bg-teal-500/10">Change Destination</button>
+        </div>
 
-            <div className="space-y-16">
-               <div className="flex items-center justify-between">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">02. Energy Intensity</h3>
-                  <span className="text-4xl font-black italic text-teal-500 tracking-tighter uppercase">{form.energy}/10</span>
-               </div>
-               <div className="space-y-12 text-center">
-                  <input 
-                     type="range" min="1" max="10" step="1" 
-                     value={form.energy} 
-                     onChange={(e) => updateForm('energy', parseInt(e.target.value))} 
-                     className="w-full h-4 bg-slate-200 dark:bg-slate-900/50 rounded-full appearance-none cursor-pointer accent-teal-500 border border-slate-300 dark:border-white/10" 
-                  />
-                  <div className="h-12 flex items-center justify-center overflow-hidden">
-                     <AnimatePresence mode="wait">
-                        <motion.p 
-                           key={form.energy}
-                           initial={{ y: 20, opacity: 0 }}
-                           animate={{ y: 0, opacity: 1 }}
-                           exit={{ y: -20, opacity: 0 }}
-                           className="text-3xl font-black italic tracking-tighter uppercase text-slate-400 dark:text-white/60"
-                        >
-                           {ENERGY_LABELS[form.energy - 1]}
-                        </motion.p>
-                     </AnimatePresence>
+        <div className={`p-10 md:p-16 rounded-[4rem] backdrop-blur-3xl border border-white/20 transition-colors shadow-2xl ${form.noctourism ? 'bg-indigo-900/40' : 'bg-white/60'}`}>
+          <form onSubmit={handleSubmit}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+
+              {/* Left Column: The Vibe */}
+              <div className="space-y-16">
+                <div className="space-y-10">
+                  <div className="flex items-center space-x-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">01. Travel Persona</h3>
+                    <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
                   </div>
-               </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {PERSONAS.map(p => <PersonaCard key={p.id} persona={p} isSelected={form.persona === p.id} onSelect={(id) => updateForm('persona', id)} />)}
+                  </div>
+                </div>
+
+                <div className="space-y-10">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">02. Energy Intensity</h3>
+                    <span className="text-4xl font-black italic text-teal-500 tracking-tighter uppercase">{form.energy}/10</span>
+                  </div>
+                  <div className="space-y-10 text-center">
+                    <input
+                      type="range" min="1" max="10" step="1"
+                      value={form.energy}
+                      onChange={(e) => updateForm('energy', parseInt(e.target.value))}
+                      className="w-full h-4 bg-slate-200 dark:bg-slate-900/50 rounded-full appearance-none cursor-pointer accent-teal-500 border border-slate-300 dark:border-white/10"
+                    />
+                    <div className="h-12 flex items-center justify-center overflow-hidden">
+                      <AnimatePresence mode="wait">
+                        <motion.p
+                          key={form.energy}
+                          initial={{ y: 20, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: -20, opacity: 0 }}
+                          className="text-2xl font-black italic tracking-tighter uppercase text-slate-400 dark:text-white/60"
+                        >
+                          {ENERGY_LABELS[form.energy - 1]}
+                        </motion.p>
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: The Setup */}
+              <div className="space-y-16">
+                <div className="space-y-10">
+                  <div className="flex items-center space-x-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">03. Budget Tier</h3>
+                    <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    {[
+                      { tier: '$', label: 'Budget' },
+                      { tier: '$$', label: 'Comfort' },
+                      { tier: '$$$', label: 'Premium' },
+                    ].map(({ tier, label }) => (
+                      <motion.button
+                        key={tier}
+                        type="button"
+                        whileHover={{ y: -4 }}
+                        onClick={() => updateForm('budget', tier)}
+                        className={`p-8 rounded-[2.5rem] border-2 text-center transition-all shadow-sm hover:shadow-md ${
+                          form.budget === tier
+                            ? 'border-teal-500 bg-teal-500 text-white shadow-xl shadow-teal-500/20'
+                            : 'border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 backdrop-blur-md hover:border-teal-400'
+                        }`}
+                      >
+                        <div className="text-2xl font-black italic tracking-tighter mb-2">{tier}</div>
+                        <div className={`text-[10px] font-black uppercase tracking-widest ${form.budget === tier ? 'text-white/80' : 'text-slate-400 dark:text-slate-500'}`}>{label}</div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-10">
+                  <div className="flex items-center space-x-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">04. Mode Arbiter</h3>
+                    <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+                  </div>
+                  <div onClick={() => updateForm('noctourism', !form.noctourism)} className={`p-8 rounded-[3.5rem] border-2 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${form.noctourism ? 'border-indigo-500 bg-indigo-500 text-white shadow-xl shadow-indigo-500/30' : 'border-slate-200 dark:border-white/20 bg-white/10 hover:border-teal-400'}`}>
+                    <div className="flex items-center space-x-6">
+                      <div className={`p-5 rounded-2xl ${form.noctourism ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-teal-600'}`}>{form.noctourism ? <Moon className="w-8 h-8" /> : <Sun className="w-8 h-8" />}</div>
+                      <h4 className="font-black text-2xl italic uppercase tracking-tighter">Noctourism</h4>
+                    </div>
+                    <div className={`w-16 h-8 rounded-full p-1.5 transition-colors ${form.noctourism ? 'bg-white/40' : 'bg-slate-200 dark:bg-slate-800'}`}>
+                      <motion.div animate={{ x: form.noctourism ? 32 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" />
+                    </div>
+                  </div>
+
+                  {form.noctourism && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Night Pressure</h3>
+                        <span className="text-2xl font-black italic text-indigo-400">{form.nightIntensity}/10</span>
+                      </div>
+                      <input type="range" min="1" max="10" step="1" value={form.nightIntensity} onChange={(e) => updateForm('nightIntensity', parseInt(e.target.value))} className="w-full h-3 bg-indigo-500/20 rounded-full appearance-none cursor-pointer accent-indigo-500" />
+                    </motion.div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-20">
-              <div className="space-y-10">
-                 <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">03. Mode Arbiter</h3>
-                 <div onClick={() => updateForm('noctourism', !form.noctourism)} className={`p-8 rounded-[3.5rem] border-2 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${form.noctourism ? 'border-indigo-500 bg-indigo-500 text-white shadow-xl shadow-indigo-500/30' : 'border-slate-200 dark:border-white/20 bg-white/10 hover:border-teal-400'}`}>
-                    <div className="flex items-center space-x-6">
-                       <div className={`p-5 rounded-2xl ${form.noctourism ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-teal-600'}`}>{form.noctourism ? <Moon className="w-8 h-8" /> : <Sun className="w-8 h-8" />}</div>
-                       <h4 className="font-black text-2xl italic uppercase tracking-tighter">Noctourism</h4>
-                    </div>
-                    <div className={`w-16 h-8 rounded-full p-1.5 transition-colors ${form.noctourism ? 'bg-white/40' : 'bg-slate-200 dark:bg-slate-800'}`}><motion.div animate={{ x: form.noctourism ? 32 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" /></div>
-                 </div>
-              </div>
-              
-              {form.noctourism ? (
-                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-10">
-                    <div className="flex items-center justify-between font-black uppercase tracking-widest leading-tight text-center"><h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">04. Night Pressure</h3><span className="text-2xl font-black italic text-indigo-400">{form.nightIntensity}/10</span></div>
-                    <input type="range" min="1" max="10" step="1" value={form.nightIntensity} onChange={(e) => updateForm('nightIntensity', parseInt(e.target.value))} className="w-full h-3 bg-indigo-500/20 rounded-full appearance-none cursor-pointer accent-indigo-500" />
-                 </motion.div>
-              ) : (
-                 <div className="flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-white/10 rounded-[3.5rem] opacity-20">
-                    <span className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">Nocturnal Sector<br/>Offline</span>
-                 </div>
-              )}
+            <div className="flex justify-center pt-16">
+              <button type="submit" className={`px-24 py-12 rounded-full font-black text-3xl uppercase italic tracking-tighter shadow-2xl transition-all active:scale-95 ${form.noctourism ? 'bg-indigo-500 text-white shadow-indigo-500/40 hover:bg-indigo-400' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>Reason Trip</button>
             </div>
-            
-            <div className="flex justify-center pt-10"><button type="submit" className={`px-24 py-12 rounded-full font-black text-3xl uppercase italic tracking-tighter shadow-2xl transition-all ${form.noctourism ? 'bg-indigo-500 text-white shadow-indigo-500/40 hover:bg-vigo-400 active:scale-95' : 'bg-slate-900 text-white'}`}>Reason Trip</button></div>
           </form>
         </div>
       </section>
@@ -460,58 +604,86 @@ function VibeEngine() {
       <Header currentView={view} isDark={form.noctourism} onToggleTheme={() => updateForm('noctourism', !form.noctourism)} setView={setView} />
       <AnimatePresence>{status === 'processing' && <CalculatingVibe messageIndex={messageIndex} />}</AnimatePresence>
       <div className="max-w-7xl mx-auto"><main>{renderContent()}
-        <AnimatePresence>{status === 'completed' && expertResult && (
-          <motion.section initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="z-50 fixed inset-0 overflow-y-auto bg-slate-950 p-6 md:p-12">
-            <div className="max-w-6xl mx-auto space-y-12">
-              <header className="flex justify-between items-start">
+        <AnimatePresence>{status === 'completed' && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="z-50 fixed inset-0 overflow-y-auto bg-slate-950"
+          >
+            <div className="max-w-5xl mx-auto px-6 md:px-12 py-12 space-y-10">
+
+              {/* Header */}
+              <header className="flex justify-between items-start pt-4">
                 <div>
-                   <h5 className="text-[10px] font-black uppercase tracking-[0.6em] text-teal-500 mb-2">Expert Reasoning</h5>
-                   <h2 className="text-6xl font-black italic tracking-tighter uppercase text-white leading-[0.8]">The Conclusion</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.6em] text-teal-500 mb-3">Your Itinerary</p>
+                  <h2 className="text-6xl font-black italic tracking-tighter uppercase text-white leading-[0.85]">{form.destination}</h2>
+                  <div className="flex flex-wrap items-center gap-4 mt-4">
+                    {[form.arrivalDate, form.persona, form.budget].map(tag => (
+                      <span key={tag} className="px-4 py-1.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/60">{tag}</span>
+                    ))}
+                  </div>
                 </div>
-                <button 
-                  onClick={() => setStatus('idle')} 
-                  className="w-16 h-16 rounded-full bg-white/10 hover:bg-white/20 transition-all flex items-center justify-center text-white border border-white/20 hover:scale-110 active:scale-95 group"
-                >
-                  <ArrowRight className="w-8 h-8 rotate-180 group-hover:-translate-x-1 transition-transform" />
-                </button>
+                <div className="flex items-center gap-3 mt-4">
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={exportMarkdown}
+                    title="Export to Markdown"
+                    className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all"
+                  >
+                    <Download className="w-5 h-5 text-white" />
+                  </motion.button>
+                  <button
+                    onClick={() => { setStatus('idle'); setLocked(new Set()); }}
+                    className="w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center border border-white/10 transition-all group"
+                  >
+                    <ArrowRight className="w-6 h-6 text-white rotate-180 group-hover:-translate-x-1 transition-transform" />
+                  </button>
+                </div>
               </header>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                 <div className="lg:col-span-2 space-y-12">
-                    <WeatherTimeline hourly={expertResult.hourly} />
-                    
-                    <div className="p-10 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-3xl">
-                       <h5 className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-500 mb-6">Expert Logic Strategy</h5>
-                       <p className="text-2xl font-medium tracking-tight text-white/90 leading-relaxed italic uppercase italic tracking-tighter uppercase">{expertResult.strategy}</p>
-                    </div>
-                 </div>
+              {/* Weather */}
+              {weather && (
+                <>
+                  <WeatherTimeline hourly={weather.hourly} />
+                  <div className="flex flex-wrap gap-3">
+                    <span className="px-5 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest text-amber-400">Peak {weather.maxTemp}°C</span>
+                    <span className="px-5 py-2 rounded-full bg-sky-500/10 border border-sky-500/20 text-[10px] font-black uppercase tracking-widest text-sky-400">Rain {weather.precipProb}%</span>
+                    {weather.maxUv >= 8 && (
+                      <span className="px-5 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-widest text-red-400">High UV {weather.maxUv} — Sunscreen Required</span>
+                    )}
+                  </div>
+                </>
+              )}
 
-                 <div className="space-y-10">
-                    <div className="relative pl-12 border-l border-white/10 space-y-20 py-10">
-                       <div className="absolute top-0 left-[-5px] w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
-                       <div className="absolute bottom-0 left-[-5px] w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
-
-                       <div className="space-y-4">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-amber-400">01. Morning Rush</span>
-                          <h4 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-tight">{expertResult.morning}</h4>
-                       </div>
-                       
-                       <div className="space-y-4">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-sky-400">02. Noon Zenith</span>
-                          <h4 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-tight">{expertResult.afternoon}</h4>
-                       </div>
-
-                       <div className="space-y-4">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-400">03. Evening Fade</span>
-                          <h4 className="text-2xl font-black italic tracking-tighter uppercase text-white leading-tight">{expertResult.evening}</h4>
-                       </div>
-                    </div>
-                 </div>
+              {/* Time Slots */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-16">
+                {[
+                  { slot: 'Morning', label: '01. Morning', color: 'text-amber-400' },
+                  { slot: 'Afternoon', label: '02. Afternoon', color: 'text-sky-400' },
+                  { slot: 'Evening', label: '03. Evening', color: 'text-indigo-400' },
+                ].map(({ slot, label, color }) => {
+                  const pool = pools[slot] || [];
+                  const activity = pool[picks[slot]];
+                  const isLocked = !!(activity && locked.has(activity.id));
+                  return (
+                    <SlotSection
+                      key={slot}
+                      label={label}
+                      color={color}
+                      activity={activity}
+                      isLocked={isLocked}
+                      onToggleLock={handleToggleLock}
+                      onReroll={() => handleReroll(slot)}
+                      canReroll={pool.length > 1}
+                    />
+                  );
+                })}
               </div>
 
-              <footer className="pt-12 border-t border-white/5 flex justify-between items-center opacity-30 mt-20">
-                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">Reasoning Engine: Alpha-01</span>
-                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">Thailand Coordinates: {form.destination}</span>
+              <footer className="border-t border-white/5 pt-8 flex justify-between items-center opacity-30">
+                <span className="text-[10px] font-black uppercase tracking-[0.4em]">TRVLTOO — Alpha</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.4em]">{form.destination}, Thailand</span>
               </footer>
             </div>
           </motion.section>
