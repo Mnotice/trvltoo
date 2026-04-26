@@ -11,7 +11,7 @@ import {
 import { db } from './firebase';
 import { collection, addDoc, onSnapshot, doc } from 'firebase/firestore';
 import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
-import { fetchItinerary, fetchWeather, getDestinationTips } from './apiService';
+import { fetchItinerary, fetchWeather, getDestinationTips, getDestinationAreas } from './apiService';
 import { signInWithGoogle, signOutUser, subscribeToAuthState } from './auth';
 import { saveTrip } from './supabase';
 import { jsPDF } from 'jspdf';
@@ -238,6 +238,45 @@ const LocationGrid = ({ selected, onSelect }) => (
   </div>
 );
 
+const AreaSelector = ({ destination, selected, onSelect }) => {
+  const areas = getDestinationAreas(destination);
+  if (!areas.length) return null;
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center space-x-4">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">02. Where Are You Staying?</h3>
+        <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {areas.map(area => (
+          <motion.button
+            key={area}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onSelect(selected === area ? '' : area)}
+            className={`px-6 py-4 rounded-[2rem] border-2 text-[11px] font-black uppercase tracking-widest transition-all ${
+              selected === area
+                ? 'border-teal-500 bg-teal-500 text-white shadow-lg shadow-teal-500/20'
+                : 'border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 text-slate-600 dark:text-white/60 hover:border-teal-400'
+            }`}
+          >
+            {area}
+          </motion.button>
+        ))}
+      </div>
+      {selected && (
+        <motion.p
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[11px] font-bold uppercase tracking-widest text-teal-500 opacity-70"
+        >
+          Activities near {selected} will appear first — re-roll anytime to explore further.
+        </motion.p>
+      )}
+    </div>
+  );
+};
+
 const PersonaCard = ({ persona, isSelected, onSelect }) => (
   <motion.button 
     type="button"
@@ -437,7 +476,7 @@ const LocalIntelPanel = ({ tips, activeTab, onTabChange }) => {
   );
 };
 
-const DateRangeStrip = ({ arrivalDate, departureDate, onArrivalChange, onDepartureChange }) => {
+const DateRangeStrip = ({ arrivalDate, departureDate, onArrivalChange, onDepartureChange, checkInStep = '03', checkOutStep = '04' }) => {
   const nights = arrivalDate && departureDate
     ? Math.max(0, Math.round((new Date(departureDate) - new Date(arrivalDate)) / 86400000))
     : 0;
@@ -473,8 +512,8 @@ const DateRangeStrip = ({ arrivalDate, departureDate, onArrivalChange, onDepartu
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        <DatePicker label="Check-In" value={arrivalDate} onChange={onArrivalChange} minDate={new Date().toISOString().split('T')[0]} stepLabel="02" />
-        <DatePicker label="Check-Out" value={departureDate} onChange={onDepartureChange} minDate={arrivalDate} stepLabel="03" />
+        <DatePicker label="Check-In" value={arrivalDate} onChange={onArrivalChange} minDate={new Date().toISOString().split('T')[0]} stepLabel={checkInStep} />
+        <DatePicker label="Check-Out" value={departureDate} onChange={onDepartureChange} minDate={arrivalDate} stepLabel={checkOutStep} />
       </div>
       {nights > 0 && (
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center">
@@ -497,13 +536,14 @@ function VibeEngine() {
 
   const [form, setForm] = useState({
     destination: 'Krabi',
+    area: '',
     arrivalDate: defaultArrival.toISOString().split('T')[0],
     departureDate: defaultDeparture.toISOString().split('T')[0],
     persona: 'Friends',
     budget: '$$',
     energy: 5,
     noctourism: false,
-    nightIntensity: 5
+    nightIntensity: 5,
   });
   const [status, setStatus] = useState('idle');
   const [pools, setPools] = useState({ Morning: [], Afternoon: [], Evening: [] });
@@ -681,12 +721,29 @@ function VibeEngine() {
         
         <div className="space-y-12">
           <div className="flex items-center space-x-4"><h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">01. Destination Selection</h3><div className="h-px flex-1 bg-slate-200 dark:bg-white/10" /></div>
-          <LocationGrid selected={form.destination} onSelect={(id) => updateForm('destination', id)} />
+          <LocationGrid
+            selected={form.destination}
+            onSelect={(id) => setForm(prev => ({ ...prev, destination: id, area: '' }))}
+          />
         </div>
+
+        <AnimatePresence>
+          {form.destination && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              <AreaSelector
+                destination={form.destination}
+                selected={form.area}
+                onSelect={(a) => updateForm('area', a)}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <DateRangeStrip
           arrivalDate={form.arrivalDate}
           departureDate={form.departureDate}
+          checkInStep="03"
+          checkOutStep="04"
           onArrivalChange={(d) => {
             updateForm('arrivalDate', d);
             if (form.departureDate && d >= form.departureDate) {
@@ -875,6 +932,7 @@ function VibeEngine() {
                       return [
                         `${form.arrivalDate} → ${form.departureDate}`,
                         nights ? `${nights} nights` : null,
+                        form.area || null,
                         form.persona,
                         form.budget,
                       ].filter(Boolean).map(tag => (

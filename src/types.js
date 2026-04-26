@@ -9,7 +9,7 @@
  */
 
 /**
- * @typedef {'Solo' | 'Couple' | 'Foodie' | 'Nomad'} PersonaId
+ * @typedef {'Solo' | 'Friends' | 'Couple' | 'Foodie' | 'Nomad'} PersonaId
  */
 
 /**
@@ -23,6 +23,7 @@
  * @property {string}     subtitle  - Location / address
  * @property {string}     category  - Activity type label
  * @property {BudgetTier} budget    - Price tier
+ * @property {string}     area      - Neighbourhood zone, or 'day_trip'
  * @property {string}     image     - Hero image URL
  */
 
@@ -45,10 +46,12 @@
 /**
  * @typedef {Object} TripForm
  * @property {string}     destination
- * @property {string}     arrivalDate  - ISO date string YYYY-MM-DD
+ * @property {string}     [area]          - Neighbourhood / zone within the destination
+ * @property {string}     arrivalDate     - ISO date string YYYY-MM-DD
+ * @property {string}     [departureDate] - ISO date string YYYY-MM-DD
  * @property {PersonaId}  persona
  * @property {BudgetTier} budget
- * @property {number}     energy       - 1–10
+ * @property {number}     energy          - 1–10
  * @property {boolean}    noctourism
- * @property {number}     nightIntensity - 1–10
+ * @property {number}     nightIntensity  - 1–10
  */
