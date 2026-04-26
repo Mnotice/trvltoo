@@ -3,24 +3,33 @@ const FEATURE_DATA = {
   Phuket: {
     Morning: [
       { id: 'p1', title: 'Big Buddha Sunrise', subtitle: 'Karon, Phuket', category: 'Sightseeing', budget: '$', image: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p2', title: 'Kata Beach Surf Lesson', subtitle: 'Kata Beach', category: 'Sports', budget: '$$', image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p2', title: 'Kata Beach Morning Swim', subtitle: 'Kata Beach — quiet before 9am', category: 'Beach', budget: '$', image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&q=80&w=800' },
       { id: 'p3', title: 'Chalong Temple Visit', subtitle: 'Chalong', category: 'Culture', budget: '$', image: 'https://images.unsplash.com/photo-1528181304800-2f5402473ff1?auto=format&fit=crop&q=80&w=800' },
       { id: 'p4', title: 'Private Yacht Breakfast', subtitle: 'Ao Po Grand Marina', category: 'Luxury', budget: '$$$', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p5', title: 'Kamala Beach Walk', subtitle: 'Kamala', category: 'Nature', budget: '$', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p5', title: 'Nai Harn Beach Walk', subtitle: "Rawai — locals' favourite, rarely crowded", category: 'Beach', budget: '$', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p6', title: 'Freedom Beach by Longtail', subtitle: 'Patong — hidden cove, boat access only', category: 'Beach', budget: '$$', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p7', title: 'Phi Phi Island Day Trip', subtitle: 'Maya Bay — book speedboat in advance', category: 'Day Trip', budget: '$$', image: 'https://images.unsplash.com/photo-1537953391402-d83049195007?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p8', title: 'Phang Nga Bay & James Bond Island', subtitle: 'Departs Ao Por Pier, 8am', category: 'Day Trip', budget: '$$', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=800' },
     ],
     Afternoon: [
-      { id: 'p6', title: 'Old Phuket Town Walk', subtitle: 'Thalang Road', category: 'Culture', budget: '$', image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p7', title: 'Promthep Cape View', subtitle: 'Rawai', category: 'Nature', budget: '$', image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p8', title: 'Thai Cooking Class', subtitle: 'Phuket Town', category: 'Culture', budget: '$$', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p9', title: 'Aqua Club Spa Session', subtitle: 'Surin Beach', category: 'Wellness', budget: '$$$', image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p10', title: 'Snorkelling at Coral Island', subtitle: 'Ko Hae', category: 'Adventure', budget: '$$', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p9', title: 'Old Phuket Town Walk', subtitle: 'Thalang Road — Sino-Portuguese shophouses', category: 'Culture', budget: '$', image: 'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p10', title: 'Surin Beach Afternoon', subtitle: "Millionaire's Mile — upscale, calm water", category: 'Beach', budget: '$', image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p11', title: 'Thai Cooking Class', subtitle: 'Phuket Town — 3-hr hands-on class', category: 'Culture', budget: '$$', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p12', title: 'Aqua Club Spa & Massage', subtitle: 'Surin Beach — traditional Thai massage', category: 'Wellness', budget: '$$$', image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p13', title: 'Snorkelling at Coral Island', subtitle: 'Ko Hae — 20-min boat from Chalong', category: 'Adventure', budget: '$$', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p14', title: 'Kata Noi Secret Beach', subtitle: 'South Kata — best snorkelling off Phuket', category: 'Beach', budget: '$', image: 'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p15', title: 'Similan Islands Dive Trip', subtitle: 'Full-day boat — top 10 dive sites worldwide', category: 'Day Trip', budget: '$$$', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800' },
+      { id: 'p16', title: 'Racha Yai Island Snorkel', subtitle: 'Closest crystal water day trip — 45-min boat', category: 'Day Trip', budget: '$$', image: 'https://images.unsplash.com/photo-1537953391402-d83049195007?auto=format&fit=crop&q=80&w=800' },
     ],
     Evening: [
-      { id: 'p11', title: 'Patong Night Market', subtitle: 'Bangla Road', category: 'Lifestyle', budget: '$', image: 'https://images.unsplash.com/photo-1563911526490-7d72c11434b9?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p12', title: 'Blue Elephant Fine Dining', subtitle: 'Krabi Road', category: 'Dining', budget: '$$$', image: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p13', title: 'Rooftop Bar at SAii', subtitle: 'Karon Beach', category: 'Nightlife', budget: '$$', image: 'https://images.unsplash.com/photo-1533107862482-0e6974b06ec4?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p14', title: 'Street Food at Malin Plaza', subtitle: 'Patong', category: 'Dining', budget: '$', image: 'https://images.unsplash.com/photo-1562601579-599dec504631?auto=format&fit=crop&q=80&w=800' },
-      { id: 'p15', title: 'Muay Thai Fight Night', subtitle: 'Bangla Boxing Stadium', category: 'Sports', budget: '$$', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800' },
+      { id: 'pe1', title: 'Naka Weekend Night Market', subtitle: 'Naka Market — Sat & Sun only, huge local food scene', category: 'Dining', budget: '$', image: 'https://images.unsplash.com/photo-1563911526490-7d72c11434b9?auto=format&fit=crop&q=80&w=800' },
+      { id: 'pe2', title: 'Blue Elephant Fine Dining', subtitle: 'Krabi Road — Thai royal cuisine in a colonial mansion', category: 'Dining', budget: '$$$', image: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80&w=800' },
+      { id: 'pe3', title: 'Rooftop Sunset at SAii', subtitle: 'Karon Beach — golden hour views over Andaman', category: 'Nightlife', budget: '$$', image: 'https://images.unsplash.com/photo-1533107862482-0e6974b06ec4?auto=format&fit=crop&q=80&w=800' },
+      { id: 'pe4', title: 'Malin Plaza Street Food', subtitle: 'Patong — 60+ stalls, mango sticky rice & pad see ew', category: 'Dining', budget: '$', image: 'https://images.unsplash.com/photo-1562601579-599dec504631?auto=format&fit=crop&q=80&w=800' },
+      { id: 'pe5', title: 'Muay Thai Fight Night', subtitle: 'Bangla Boxing Stadium — authentic fights Tue/Fri/Sat', category: 'Sports', budget: '$$', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800' },
+      { id: 'pe6', title: 'Kopitiam Dinner in Old Town', subtitle: 'Thalang Rd — legendary Peranakan dishes, queue early', category: 'Dining', budget: '$', image: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&q=80&w=800' },
+      { id: 'pe7', title: 'Seafood Dinner at Kan Eang 2', subtitle: 'Chalong Bay — fresh catch, tables on the pier', category: 'Dining', budget: '$$', image: 'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80&w=800' },
+      { id: 'pe8', title: 'Promthep Cape Sunset', subtitle: 'Rawai — best sunset on the island, arrive 30 min early', category: 'Nature', budget: '$', image: 'https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&q=80&w=800' },
     ],
   },
   Krabi: {
@@ -93,6 +102,131 @@ const FEATURE_DATA = {
     ],
   },
 };
+
+const DESTINATION_TIPS = {
+  Phuket: {
+    beaches: [
+      { name: 'Kata Noi', note: 'Best snorkelling off Phuket, quieter than Kata proper', vibe: 'Secluded' },
+      { name: 'Nai Harn', note: "Locals' favourite — rarely overrun, great swimming May–Oct", vibe: 'Local' },
+      { name: 'Surin', note: "Millionaire's Mile — calm water, upscale beach clubs", vibe: 'Upscale' },
+      { name: 'Freedom Beach', note: 'Longtail boat access only — stunning hidden cove off Patong', vibe: 'Hidden' },
+      { name: 'Kamala', note: 'Quiet family-friendly bay, great sunsets, calmer waves', vibe: 'Relaxed' },
+      { name: 'Patong', note: 'Busiest beach — best for people-watching, strong currents in monsoon', vibe: 'Lively' },
+    ],
+    dayTrips: [
+      { name: 'Phi Phi Islands', duration: 'Full day', note: 'Book speedboat in advance — Maya Bay has timed entry. Go early to beat crowds.', budget: '$$' },
+      { name: 'Phang Nga Bay', duration: 'Full day', note: 'James Bond Island + sea caves by longtail. Departs Ao Por Pier 8am.', budget: '$$' },
+      { name: 'Similan Islands', duration: 'Full day', note: 'World-class diving and snorkelling. Book through a certified dive operator.', budget: '$$$' },
+      { name: 'Racha Yai', duration: 'Half day', note: 'Closest crystal-clear water day trip — 45-min speedboat, stunning visibility.', budget: '$$' },
+    ],
+    food: [
+      { name: 'Naka Weekend Night Market', note: 'Best local food scene on the island — Sat & Sun evenings only' },
+      { name: 'Kopitiam by Wilai', note: 'Legendary Peranakan dishes on Thalang Rd — queue before opening' },
+      { name: 'Malin Plaza', note: 'Patong street food hub — mango sticky rice, pad see ew, 60+ stalls' },
+      { name: 'Kan Eang 2', note: 'Chalong Bay pier restaurant — best fresh seafood at sunset' },
+      { name: 'Roti Stands in Patong', note: 'Late-night roti with condensed milk — a Phuket classic under 50 THB' },
+    ],
+    gettingAround: [
+      'Use Grab (Thailand\'s Uber) for transparent fares — avoids tuk-tuk price inflation',
+      'Tuk-tuks charge 200–500 THB per trip — always agree on price before boarding',
+      'Scooter rental is available but Phuket roads are challenging; many tourist accidents',
+      'Songthaews (shared pickup trucks) run fixed routes for ~30 THB between Patong and Kata',
+      'For day trips, book via your hotel or a licensed operator rather than beach touts',
+    ],
+    thingsToAvoid: [
+      'Jet ski scams: damage is fabricated after you return — photograph the ski before use or skip it',
+      'Gem store scams: tuk-tuk drivers earn commission taking tourists to "special discount" stores',
+      'Bangla Road at night: fun to walk, but keep bags front-facing and watch your drinks',
+      'Overpriced hotel tour desks: identical day trips are 40–60% cheaper through local operators',
+      'Red-flag beaches during May–Oct: Patong and Karon have strong monsoon currents — respect flags',
+      'May weather heads-up: onset of monsoon season — afternoon storms are common but usually brief',
+    ],
+  },
+  Krabi: {
+    beaches: [
+      { name: 'Railay West', note: 'Accessible only by longtail — limestone-cliff backdrop, stunning', vibe: 'Dramatic' },
+      { name: 'Phra Nang Cave', note: 'Arguably most beautiful beach in Thailand — worth the longtail ride', vibe: 'Legendary' },
+      { name: 'Ao Nang', note: 'Main hub — good base for eating and boat trips', vibe: 'Convenient' },
+      { name: 'Koh Lanta', note: 'Long sandy beaches, quieter pace — day trip or overnight', vibe: 'Relaxed' },
+    ],
+    dayTrips: [
+      { name: '4 Islands Tour', duration: 'Full day', note: 'Snorkelling across four islands — classic Krabi day trip with most operators', budget: '$$' },
+      { name: 'Phi Phi Islands', duration: 'Full day', note: 'Closer from Krabi than Phuket — speedboat recommended for more island time', budget: '$$' },
+      { name: 'Tiger Cave Temple', duration: 'Half day', note: '1,237 steps to a 360° hilltop view — go at sunrise or late afternoon', budget: '$' },
+    ],
+    food: [
+      { name: 'Ao Nang Night Market', note: 'Best local eats in Krabi — fresh seafood grilled to order' },
+      { name: 'Ton Kee Seafood', note: 'Local favourite near Krabi Town — cheaper than beachside restaurants' },
+      { name: 'Pad Thai stalls', note: 'Street-side stalls around Krabi Town serve some of the best pad thai in the south' },
+    ],
+    gettingAround: [
+      'Long-tail boats are the main transport between beaches — always negotiate price first',
+      'Krabi Town is 30 min from Ao Nang — songthaew runs regularly for ~60 THB',
+      'Grab works in Ao Nang and Krabi Town',
+      'Scooter rental is manageable here — roads are calmer than Phuket',
+    ],
+    thingsToAvoid: [
+      'Cheapest Phi Phi tour operators — underpowered boats make for rough and slow journeys',
+      'Swimming near longtail boat engines — prop injuries are a real risk in busy channels',
+      'Monsoon season (May–Oct): some islands close temporarily due to rough seas',
+    ],
+  },
+  Bangkok: {
+    beaches: [],
+    dayTrips: [
+      { name: 'Ayutthaya', duration: 'Full day', note: 'Ancient capital — hire a tuk-tuk to cover all ruins efficiently in one day', budget: '$' },
+      { name: 'Damnoen Saduak Floating Market', duration: 'Half day', note: 'Go before 8am — tourist boats clog the canals quickly', budget: '$$' },
+      { name: 'Kanchanaburi', duration: 'Full day', note: 'Bridge on the River Kwai, WWII history, jungle waterfalls', budget: '$$' },
+    ],
+    food: [
+      { name: 'Yaowarat Chinatown', note: "Bangkok's best street food street — go after 7pm when stalls fully open" },
+      { name: 'Or Tor Kor Market', note: 'Premium fresh produce and cooked food near Chatuchak' },
+      { name: 'Jay Fai', note: 'Michelin-starred street food — the crab omelette is iconic, queue hours early' },
+      { name: 'Boat Noodle Alley', note: 'Victory Monument area — tiny bowls from 15 THB, stack them up' },
+    ],
+    gettingAround: [
+      'BTS Skytrain and MRT cover most tourist areas — buy a Rabbit card for easy top-ups',
+      'Grab is reliable and beats metered taxis for fair pricing',
+      'River taxi on Chao Phraya is scenic and cheap — stops near Grand Palace and Wat Arun',
+      'Avoid taxis that refuse the meter near tourist spots — this is illegal but common',
+    ],
+    thingsToAvoid: [
+      'Tuk-tuk "sightseeing" offers for 20 THB — always end at gem or tailor shops earning commission',
+      'Grand Palace closed scam: men outside the gate falsely say it\'s closed and offer tours elsewhere',
+      'Fake monks near temples asking for donations or blessings',
+      'Tap water: drink bottled water only throughout Thailand',
+    ],
+  },
+  'Chiang Mai': {
+    beaches: [],
+    dayTrips: [
+      { name: 'Doi Inthanon National Park', duration: 'Full day', note: "Thailand's highest peak, twin royal chedis, waterfalls — hire a driver (600–800 THB)", budget: '$$' },
+      { name: 'Elephant Nature Park', duration: 'Full day', note: 'Best ethical elephant sanctuary in Thailand — book weeks in advance, fills fast', budget: '$$$' },
+      { name: 'Chiang Rai', duration: 'Full day or overnight', note: 'White Temple, Blue Temple, Golden Triangle region — 3h drive north', budget: '$$' },
+      { name: 'Sticky Waterfall', duration: 'Half day', note: 'Unique calcite waterfall you can walk up barefoot — 1h north of Chiang Mai', budget: '$' },
+    ],
+    food: [
+      { name: 'Khao Soi', note: "Chiang Mai's signature dish — coconut curry noodle soup, try Khao Soi Khun Yai" },
+      { name: 'Sunday Night Bazaar', note: 'Wualai Road — best market for Northern Thai snacks and handicrafts' },
+      { name: 'Chang Phueak Gate stalls', note: 'Local dinner spot — grilled meats, pad krapow, sai ua sausage from ~50 THB' },
+      { name: 'Nimman cafes', note: 'Thai-western specialty coffee scene — Ristr8to is world-renowned' },
+    ],
+    gettingAround: [
+      'Scooter rental is the best way to explore — roads are manageable, 200–300 THB/day',
+      'Songthaews (red shared trucks) around the old city for ~30 THB — flag them down',
+      'Grab works throughout Chiang Mai city',
+      'Cycling around the Old City moat is a great way to temple-hop at your own pace',
+    ],
+    thingsToAvoid: [
+      'Elephant riding: most ethical sanctuaries only offer walking with and feeding elephants — check carefully',
+      'Buying hill tribe handicrafts from street touts — support community-run shops directly',
+      'Burning season (Feb–April): severe air quality — check AQI if you have respiratory sensitivities',
+      'Night Safari: quality has declined sharply, better wildlife experiences are available in the region',
+    ],
+  },
+};
+
+export const getDestinationTips = (destination) => DESTINATION_TIPS[destination] || null;
 
 // Budget tier hierarchy — higher tier includes lower tiers
 const BUDGET_RANK = { '$': 1, '$$': 2, '$$$': 3 };

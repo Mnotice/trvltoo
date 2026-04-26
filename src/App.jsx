@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  User, Heart, Utensils, Laptop,
+  User, Heart, Utensils, Laptop, Users,
   Moon, Sun, ArrowRight, Compass,
   MapPin, Clock, CheckCircle2,
-  Dices, Star, Lock, Download, Share2, FileText
+  Dices, Star, Lock, Download, Share2, FileText,
+  Waves, Sailboat, UtensilsCrossed, Navigation, ShieldAlert,
+  ChevronRight,
 } from 'lucide-react';
 import { db } from './firebase';
 import { collection, addDoc, onSnapshot, doc } from 'firebase/firestore';
 import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
-import { fetchItinerary, fetchWeather } from './apiService';
+import { fetchItinerary, fetchWeather, getDestinationTips } from './apiService';
 import { signInWithGoogle, signOutUser, subscribeToAuthState } from './auth';
 import { saveTrip } from './supabase';
 import { jsPDF } from 'jspdf';
@@ -51,7 +53,8 @@ const N8N_WEBHOOK_URL = "https://mikhailnicholls6.app.n8n.cloud/webhook-test/tra
 
 const PERSONAS = [
   { id: 'Solo', icon: User, label: 'Solo Adventurer', desc: 'Freedom and discovery.' },
-  { id: 'Couple', icon: Heart, label: 'Romantic Couple', desc: 'Shared moments.' },
+  { id: 'Friends', icon: Users, label: 'Friends Trip', desc: 'Group adventures together.' },
+  { id: 'Couple', icon: Heart, label: 'Romantic Couple', desc: 'Shared intimate moments.' },
   { id: 'Foodie', icon: Utensils, label: 'Foodie Friends', desc: 'Culture through food.' },
   { id: 'Nomad', icon: Laptop, label: 'Digital Nomad', desc: 'Work and play.' },
 ];
@@ -319,69 +322,184 @@ const SlotSection = ({ label, color, activity, isLocked, onToggleLock, onReroll,
   </div>
 );
 
-const ArrivalStrip = ({ selected, onSelect }) => {
-  const dates = Array.from({ length: 14 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    return d;
+const LOCAL_INTEL_TABS = [
+  { id: 'beaches',      label: 'Beaches',          Icon: Waves,          key: 'beaches' },
+  { id: 'dayTrips',     label: 'Day Trips',         Icon: Sailboat,       key: 'dayTrips' },
+  { id: 'food',         label: 'Food',              Icon: UtensilsCrossed, key: 'food' },
+  { id: 'gettingAround',label: 'Getting Around',    Icon: Navigation,     key: 'gettingAround' },
+  { id: 'avoid',        label: 'Things to Avoid',   Icon: ShieldAlert,    key: 'thingsToAvoid' },
+];
+
+const LocalIntelPanel = ({ tips, activeTab, onTabChange }) => {
+  if (!tips) return null;
+  const visibleTabs = LOCAL_INTEL_TABS.filter(t => {
+    const d = tips[t.key];
+    return Array.isArray(d) ? d.length > 0 : !!d;
   });
+  const active = visibleTabs.find(t => t.id === activeTab) || visibleTabs[0];
+  if (!active) return null;
+  const data = tips[active.key];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 pb-16">
       <div className="flex items-center space-x-4">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">02. Select Arrival</h3>
-        <div className="h-px flex-1 bg-white/10 dark:bg-slate-800" />
+        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-500">Local Intel</h3>
+        <div className="h-px flex-1 bg-white/10" />
       </div>
-      <div className="flex space-x-4 overflow-x-auto pb-6 -mx-6 px-6 no-scrollbar">
-        {dates.map((date, i) => {
-          const isSelected = selected === date.toISOString().split('T')[0];
+
+      <div className="flex flex-wrap gap-3">
+        {visibleTabs.map(tab => {
+          const isActive = active.id === tab.id;
           return (
-            <motion.button
-              key={i}
-              whileHover={{ y: -4 }}
-              onClick={() => onSelect(date.toISOString().split('T')[0])}
-              className={`flex-shrink-0 w-24 p-6 rounded-[2rem] border-2 transition-all flex flex-col items-center justify-center ${
-                isSelected 
-                  ? 'border-teal-500 bg-teal-500 text-white shadow-xl shadow-teal-500/20' 
-                  : 'border-white/20 bg-white/10 dark:bg-slate-900/40 backdrop-blur-md dark:border-slate-800'
-              } ${!isSelected && 'hover:border-teal-500 shadow-sm'}`}
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              className={`flex items-center gap-2 px-5 py-3 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all ${
+                isActive
+                  ? 'bg-teal-500 border-teal-400 text-white'
+                  : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'
+              }`}
             >
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">
-                {date.toLocaleDateString('en-US', { weekday: 'short' })}
-              </span>
-              <span className="text-2xl font-black italic tracking-tighter">
-                {date.getDate()}
-              </span>
-            </motion.button>
+              <tab.Icon className="w-3.5 h-3.5" />
+              {tab.label}
+            </button>
           );
         })}
-        
-        {/* Manual Date Input Card */}
-        <div className="flex-shrink-0 w-32 relative group">
-           <div className={`absolute inset-0 p-6 rounded-[2rem] border-2 border-dashed transition-all flex flex-col items-center justify-center ${
-              !dates.some(d => d.toISOString().split('T')[0] === selected)
-                ? 'border-teal-500 bg-teal-500/10 text-teal-600'
-                : 'border-white/20 group-hover:border-teal-500 opacity-60'
-           }`}>
-             <h4 className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">Other<br/>Date</h4>
-           </div>
-           <input 
-              type="date" 
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              onChange={(e) => onSelect(e.target.value)}
-           />
-        </div>
       </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={active.id}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.18 }}
+        >
+          {(active.id === 'beaches') && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {data.map((item, i) => (
+                <div key={i} className="p-6 rounded-[2rem] bg-white/5 border border-white/10 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="font-black text-base italic tracking-tighter uppercase text-white">{item.name}</h4>
+                    <span className="flex-shrink-0 px-3 py-1 rounded-full bg-sky-500/10 text-[9px] font-black uppercase tracking-widest text-sky-400">{item.vibe}</span>
+                  </div>
+                  <p className="text-[11px] text-white/50 leading-relaxed">{item.note}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {active.id === 'dayTrips' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {data.map((item, i) => (
+                <div key={i} className="p-6 rounded-[2rem] bg-white/5 border border-white/10 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <h4 className="font-black text-base italic tracking-tighter uppercase text-white">{item.name}</h4>
+                    <span className="flex-shrink-0 px-3 py-1 rounded-full bg-indigo-500/10 text-[9px] font-black uppercase tracking-widest text-indigo-400">{item.budget}</span>
+                  </div>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-white/30">{item.duration}</p>
+                  <p className="text-[11px] text-white/50 leading-relaxed">{item.note}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {active.id === 'food' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {data.map((item, i) => (
+                <div key={i} className="p-6 rounded-[2rem] bg-white/5 border border-white/10 space-y-2">
+                  <h4 className="font-black text-base italic tracking-tighter uppercase text-white">{item.name}</h4>
+                  <p className="text-[11px] text-white/50 leading-relaxed">{item.note}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {(active.id === 'gettingAround' || active.id === 'avoid') && (
+            <div className="space-y-3">
+              {data.map((tip, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="flex items-start gap-4 p-5 rounded-[1.5rem] bg-white/5 border border-white/10"
+                >
+                  <ChevronRight className={`w-4 h-4 flex-shrink-0 mt-0.5 ${active.id === 'avoid' ? 'text-red-400' : 'text-teal-400'}`} />
+                  <p className="text-[12px] text-white/70 leading-relaxed">{tip}</p>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+};
+
+const DateRangeStrip = ({ arrivalDate, departureDate, onArrivalChange, onDepartureChange }) => {
+  const nights = arrivalDate && departureDate
+    ? Math.max(0, Math.round((new Date(departureDate) - new Date(arrivalDate)) / 86400000))
+    : 0;
+
+  const DatePicker = ({ label, value, onChange, minDate, stepLabel }) => (
+    <div className="space-y-4">
+      <div className="flex items-center space-x-4">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">{stepLabel}. {label}</h3>
+        <div className="h-px flex-1 bg-white/10 dark:bg-slate-800" />
+      </div>
+      <div className="relative">
+        <div className={`p-8 rounded-[2.5rem] border-2 transition-all ${value ? 'border-teal-500 bg-teal-500/10' : 'border-white/20 bg-white/5'}`}>
+          <p className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-2">{label}</p>
+          {value ? (
+            <p className="text-2xl font-black italic tracking-tighter">
+              {new Date(value + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+            </p>
+          ) : (
+            <p className="text-lg font-black italic tracking-tighter opacity-30">Select date</p>
+          )}
+        </div>
+        <input
+          type="date"
+          min={minDate}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        <DatePicker label="Check-In" value={arrivalDate} onChange={onArrivalChange} minDate={new Date().toISOString().split('T')[0]} stepLabel="02" />
+        <DatePicker label="Check-Out" value={departureDate} onChange={onDepartureChange} minDate={arrivalDate} stepLabel="03" />
+      </div>
+      {nights > 0 && (
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center">
+          <div className="px-8 py-4 rounded-full bg-teal-500/10 border border-teal-500/30">
+            <span className="text-teal-500 font-black text-xl italic tracking-tighter">{nights} Night{nights !== 1 ? 's' : ''}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-3">Trip Duration</span>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };
 
 function VibeEngine() {
   const [isBooting, setIsBooting] = useState(true);
+  const defaultArrival = new Date();
+  defaultArrival.setDate(defaultArrival.getDate() + 7);
+  const defaultDeparture = new Date(defaultArrival);
+  defaultDeparture.setDate(defaultDeparture.getDate() + 7);
+
   const [form, setForm] = useState({
     destination: 'Krabi',
-    arrivalDate: new Date().toISOString().split('T')[0],
-    persona: 'Solo',
+    arrivalDate: defaultArrival.toISOString().split('T')[0],
+    departureDate: defaultDeparture.toISOString().split('T')[0],
+    persona: 'Friends',
     budget: '$$',
     energy: 5,
     noctourism: false,
@@ -497,6 +615,7 @@ function VibeEngine() {
   };
 
   const [shareCopied, setShareCopied] = useState(false);
+  const [localIntelTab, setLocalIntelTab] = useState('beaches');
   const copyShareLink = () => {
     const params = new URLSearchParams({
       dest: form.destination,
@@ -565,14 +684,26 @@ function VibeEngine() {
           <LocationGrid selected={form.destination} onSelect={(id) => updateForm('destination', id)} />
         </div>
 
-        <ArrivalStrip selected={form.arrivalDate} onSelect={(date) => updateForm('arrivalDate', date)} />
+        <DateRangeStrip
+          arrivalDate={form.arrivalDate}
+          departureDate={form.departureDate}
+          onArrivalChange={(d) => {
+            updateForm('arrivalDate', d);
+            if (form.departureDate && d >= form.departureDate) {
+              const dep = new Date(d + 'T00:00:00');
+              dep.setDate(dep.getDate() + 7);
+              updateForm('departureDate', dep.toISOString().split('T')[0]);
+            }
+          }}
+          onDepartureChange={(d) => updateForm('departureDate', d)}
+        />
 
         <div className="flex justify-center pt-10 pb-20">
-           <motion.button 
+           <motion.button
              whileHover={{ scale: 1.02 }}
              whileTap={{ scale: 0.98 }}
              onClick={() => setView('plan')}
-             disabled={!form.destination || !form.arrivalDate}
+             disabled={!form.destination || !form.arrivalDate || !form.departureDate}
              className="relative group px-24 py-10 rounded-[3rem] bg-white/20 dark:bg-white/5 backdrop-blur-3xl border-2 border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white font-black text-3xl uppercase italic tracking-tighter shadow-2xl transition-all flex items-center space-x-6 disabled:opacity-20 disabled:cursor-not-allowed group"
            >
              <div className="absolute inset-0 rounded-[3rem] border-b-4 border-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -606,7 +737,11 @@ function VibeEngine() {
                     <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    {PERSONAS.map(p => <PersonaCard key={p.id} persona={p} isSelected={form.persona === p.id} onSelect={(id) => updateForm('persona', id)} />)}
+                    {PERSONAS.map((p, i) => (
+                      <div key={p.id} className={PERSONAS.length % 2 !== 0 && i === PERSONAS.length - 1 ? 'col-span-2 max-w-xs mx-auto w-full' : ''}>
+                        <PersonaCard persona={p} isSelected={form.persona === p.id} onSelect={(id) => updateForm('persona', id)} />
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -732,10 +867,20 @@ function VibeEngine() {
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.6em] text-teal-500 mb-3">Your Itinerary</p>
                   <h2 className="text-6xl font-black italic tracking-tighter uppercase text-white leading-[0.85]">{form.destination}</h2>
-                  <div className="flex flex-wrap items-center gap-4 mt-4">
-                    {[form.arrivalDate, form.persona, form.budget].map(tag => (
-                      <span key={tag} className="px-4 py-1.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/60">{tag}</span>
-                    ))}
+                  <div className="flex flex-wrap items-center gap-3 mt-4">
+                    {(() => {
+                      const nights = form.departureDate
+                        ? Math.round((new Date(form.departureDate) - new Date(form.arrivalDate)) / 86400000)
+                        : null;
+                      return [
+                        `${form.arrivalDate} → ${form.departureDate}`,
+                        nights ? `${nights} nights` : null,
+                        form.persona,
+                        form.budget,
+                      ].filter(Boolean).map(tag => (
+                        <span key={tag} className="px-4 py-1.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/60">{tag}</span>
+                      ));
+                    })()}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 mt-4">
@@ -792,6 +937,13 @@ function VibeEngine() {
                   );
                 })}
               </div>
+
+              {/* Local Intel */}
+              <LocalIntelPanel
+                tips={getDestinationTips(form.destination)}
+                activeTab={localIntelTab}
+                onTabChange={setLocalIntelTab}
+              />
 
               <footer className="border-t border-white/5 pt-8 flex justify-between items-center opacity-30">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">TRVLTOO — Alpha</span>
