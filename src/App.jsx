@@ -414,6 +414,13 @@ function VibeEngine() {
   const [weather, setWeather] = useState(null);
   const [messageIndex, setMessageIndex] = useState(0);
   const [view, setView] = useState('explore');
+  const [planStep, setPlanStep] = useState(0);
+  const [planDir, setPlanDir] = useState(1);
+
+  const goToStep = (next) => {
+    setPlanDir(next > planStep ? 1 : -1);
+    setPlanStep(next);
+  };
 
   useEffect(() => { try { performSecurityStartupAudit(); } catch (err) { console.error("🚨 CRITICAL SYSTEM HALT:", err.message); } }, []);
   useEffect(() => { if (form.noctourism) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [form.noctourism]);
@@ -481,7 +488,7 @@ function VibeEngine() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     setStatus('processing');
     setLocked(new Set());
     try {
@@ -520,7 +527,7 @@ function VibeEngine() {
            <motion.button 
              whileHover={{ scale: 1.02 }}
              whileTap={{ scale: 0.98 }}
-             onClick={() => setView('plan')}
+             onClick={() => { setPlanStep(0); setView('plan'); }}
              disabled={!form.destination || !form.arrivalDate}
              className="relative group px-24 py-10 rounded-[3rem] bg-white/20 dark:bg-white/5 backdrop-blur-3xl border-2 border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white font-black text-3xl uppercase italic tracking-tighter shadow-2xl transition-all flex items-center space-x-6 disabled:opacity-20 disabled:cursor-not-allowed group"
            >
@@ -533,129 +540,203 @@ function VibeEngine() {
         </div>
       </section>
     );
-    if (view === 'plan') return (
-      <section className="space-y-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <h2 className="text-5xl font-black italic uppercase leading-[0.9] mb-4">Trip <span className="text-teal-500">Customization</span></h2>
-            <p className="text-sm opacity-60">Configure your travel identity for {form.destination}.</p>
+    if (view === 'plan') {
+      const STEPS = [
+        { num: '01', label: 'Travel Persona' },
+        { num: '02', label: 'Energy Level' },
+        { num: '03', label: 'Budget' },
+        { num: '04', label: 'Trip Mode' },
+      ];
+      const isLast = planStep === STEPS.length - 1;
+      const stepVariants = {
+        enter: (dir) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
+        center: { x: 0, opacity: 1 },
+        exit: (dir) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
+      };
+
+      const stepContent = () => {
+        if (planStep === 0) return (
+          <div className="space-y-10">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">01 — Travel Persona</p>
+              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Who are you <span className="text-teal-500">travelling as?</span></h2>
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-4">
+              {PERSONAS.map(p => <PersonaCard key={p.id} persona={p} isSelected={form.persona === p.id} onSelect={(id) => updateForm('persona', id)} />)}
+            </div>
           </div>
-          <button onClick={() => setView('explore')} className="px-6 py-2 rounded-full border border-teal-500/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-widest hover:bg-teal-500/10">Change Destination</button>
-        </div>
-
-        <div className={`p-10 md:p-16 rounded-[4rem] backdrop-blur-3xl border border-white/20 transition-colors shadow-2xl ${form.noctourism ? 'bg-indigo-900/40' : 'bg-white/60'}`}>
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
-
-              {/* Left Column: The Vibe */}
-              <div className="space-y-16">
-                <div className="space-y-10">
-                  <div className="flex items-center space-x-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">01. Travel Persona</h3>
-                    <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {PERSONAS.map(p => <PersonaCard key={p.id} persona={p} isSelected={form.persona === p.id} onSelect={(id) => updateForm('persona', id)} />)}
+        );
+        if (planStep === 1) return (
+          <div className="space-y-10">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">02 — Energy Level</p>
+              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">How <span className="text-teal-500">intense</span> should this day be?</h2>
+            </div>
+            <div className="pt-4 space-y-10">
+              <div className="flex items-end justify-between">
+                <AnimatePresence mode="wait">
+                  <motion.p
+                    key={form.energy}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -20, opacity: 0 }}
+                    className="text-2xl font-black italic tracking-tighter uppercase opacity-50"
+                  >
+                    {ENERGY_LABELS[form.energy - 1]}
+                  </motion.p>
+                </AnimatePresence>
+                <span className="text-7xl font-black italic text-teal-500 tracking-tighter leading-none">{form.energy}<span className="text-3xl opacity-40">/10</span></span>
+              </div>
+              <input
+                type="range" min="1" max="10" step="1"
+                value={form.energy}
+                onChange={(e) => updateForm('energy', parseInt(e.target.value))}
+                className="w-full h-5 bg-slate-200 dark:bg-slate-900/50 rounded-full appearance-none cursor-pointer accent-teal-500 border border-slate-300 dark:border-white/10"
+              />
+              <div className="flex justify-between text-[10px] font-black uppercase tracking-widest opacity-30">
+                <span>Total Zen</span><span>Max Adrenaline</span>
+              </div>
+            </div>
+          </div>
+        );
+        if (planStep === 2) return (
+          <div className="space-y-10">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">03 — Budget</p>
+              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">What's your <span className="text-teal-500">daily spend</span> comfort zone?</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-4 pt-4">
+              {[
+                { tier: '$', label: 'Backpacker', range: 'Under $30/day', desc: 'Street food & hostels' },
+                { tier: '$$', label: 'Comfort', range: '$30–100/day', desc: 'Mid-range hotels & restaurants' },
+                { tier: '$$$', label: 'Premium', range: '$100+/day', desc: 'Resorts & fine dining' },
+              ].map(({ tier, label, range, desc }) => (
+                <motion.button
+                  key={tier}
+                  type="button"
+                  whileHover={{ y: -4 }}
+                  onClick={() => updateForm('budget', tier)}
+                  className={`p-8 rounded-[2.5rem] border-2 text-center transition-all shadow-sm hover:shadow-md ${
+                    form.budget === tier
+                      ? 'border-teal-500 bg-teal-500 text-white shadow-xl shadow-teal-500/20'
+                      : 'border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 backdrop-blur-md hover:border-teal-400'
+                  }`}
+                >
+                  <div className="text-2xl font-black italic tracking-tighter mb-1">{tier}</div>
+                  <div className={`text-[10px] font-black uppercase tracking-widest mb-2 ${form.budget === tier ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</div>
+                  <div className={`text-xs font-bold ${form.budget === tier ? 'text-white/90' : 'text-slate-700 dark:text-white/70'}`}>{range}</div>
+                  <div className={`text-[10px] mt-1 leading-tight ${form.budget === tier ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>{desc}</div>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        );
+        if (planStep === 3) return (
+          <div className="space-y-10">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">04 — Trip Mode</p>
+              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Day or <span className="text-teal-500">night</span> first?</h2>
+            </div>
+            <div className="pt-4 space-y-6">
+              <div onClick={() => updateForm('noctourism', !form.noctourism)} className={`p-8 rounded-[3.5rem] border-2 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${form.noctourism ? 'border-indigo-500 bg-indigo-500 text-white shadow-xl shadow-indigo-500/30' : 'border-slate-200 dark:border-white/20 bg-white/10 hover:border-teal-400'}`}>
+                <div className="flex items-center space-x-6">
+                  <div className={`p-5 rounded-2xl ${form.noctourism ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-teal-600'}`}>{form.noctourism ? <Moon className="w-8 h-8" /> : <Sun className="w-8 h-8" />}</div>
+                  <div>
+                    <h4 className="font-black text-2xl italic uppercase tracking-tighter">Noctourism</h4>
+                    <p className={`text-xs mt-1 ${form.noctourism ? 'text-white/70' : 'opacity-40'}`}>{form.noctourism ? 'Night-forward itinerary' : 'Daytime-first itinerary'}</p>
                   </div>
                 </div>
-
-                <div className="space-y-10">
+                <div className={`w-16 h-8 rounded-full p-1.5 transition-colors ${form.noctourism ? 'bg-white/40' : 'bg-slate-200 dark:bg-slate-800'}`}>
+                  <motion.div animate={{ x: form.noctourism ? 32 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" />
+                </div>
+              </div>
+              {form.noctourism && (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 p-8 rounded-[3rem] bg-indigo-500/10 border border-indigo-500/20">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">02. Energy Intensity</h3>
-                    <span className="text-4xl font-black italic text-teal-500 tracking-tighter uppercase">{form.energy}/10</span>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Night Pressure</h3>
+                    <span className="text-3xl font-black italic text-indigo-400">{form.nightIntensity}/10</span>
                   </div>
-                  <div className="space-y-10 text-center">
-                    <input
-                      type="range" min="1" max="10" step="1"
-                      value={form.energy}
-                      onChange={(e) => updateForm('energy', parseInt(e.target.value))}
-                      className="w-full h-4 bg-slate-200 dark:bg-slate-900/50 rounded-full appearance-none cursor-pointer accent-teal-500 border border-slate-300 dark:border-white/10"
-                    />
-                    <div className="h-12 flex items-center justify-center overflow-hidden">
-                      <AnimatePresence mode="wait">
-                        <motion.p
-                          key={form.energy}
-                          initial={{ y: 20, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          exit={{ y: -20, opacity: 0 }}
-                          className="text-2xl font-black italic tracking-tighter uppercase text-slate-400 dark:text-white/60"
-                        >
-                          {ENERGY_LABELS[form.energy - 1]}
-                        </motion.p>
-                      </AnimatePresence>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: The Setup */}
-              <div className="space-y-16">
-                <div className="space-y-10">
-                  <div className="flex items-center space-x-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">03. Budget Tier</h3>
-                    <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    {[
-                      { tier: '$', label: 'Backpacker', range: 'Under $30/day', desc: 'Street food & hostels' },
-                      { tier: '$$', label: 'Comfort', range: '$30–100/day', desc: 'Mid-range hotels & restaurants' },
-                      { tier: '$$$', label: 'Premium', range: '$100+/day', desc: 'Resorts & fine dining' },
-                    ].map(({ tier, label, range, desc }) => (
-                      <motion.button
-                        key={tier}
-                        type="button"
-                        whileHover={{ y: -4 }}
-                        onClick={() => updateForm('budget', tier)}
-                        className={`p-8 rounded-[2.5rem] border-2 text-center transition-all shadow-sm hover:shadow-md ${
-                          form.budget === tier
-                            ? 'border-teal-500 bg-teal-500 text-white shadow-xl shadow-teal-500/20'
-                            : 'border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 backdrop-blur-md hover:border-teal-400'
-                        }`}
-                      >
-                        <div className="text-2xl font-black italic tracking-tighter mb-1">{tier}</div>
-                        <div className={`text-[10px] font-black uppercase tracking-widest mb-2 ${form.budget === tier ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</div>
-                        <div className={`text-xs font-bold ${form.budget === tier ? 'text-white/90' : 'text-slate-700 dark:text-white/70'}`}>{range}</div>
-                        <div className={`text-[10px] mt-1 leading-tight ${form.budget === tier ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>{desc}</div>
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-10">
-                  <div className="flex items-center space-x-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">04. Mode Arbiter</h3>
-                    <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
-                  </div>
-                  <div onClick={() => updateForm('noctourism', !form.noctourism)} className={`p-8 rounded-[3.5rem] border-2 cursor-pointer transition-all flex items-center justify-between shadow-sm hover:shadow-md ${form.noctourism ? 'border-indigo-500 bg-indigo-500 text-white shadow-xl shadow-indigo-500/30' : 'border-slate-200 dark:border-white/20 bg-white/10 hover:border-teal-400'}`}>
-                    <div className="flex items-center space-x-6">
-                      <div className={`p-5 rounded-2xl ${form.noctourism ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-800 text-teal-600'}`}>{form.noctourism ? <Moon className="w-8 h-8" /> : <Sun className="w-8 h-8" />}</div>
-                      <h4 className="font-black text-2xl italic uppercase tracking-tighter">Noctourism</h4>
-                    </div>
-                    <div className={`w-16 h-8 rounded-full p-1.5 transition-colors ${form.noctourism ? 'bg-white/40' : 'bg-slate-200 dark:bg-slate-800'}`}>
-                      <motion.div animate={{ x: form.noctourism ? 32 : 0 }} className="w-5 h-5 bg-white rounded-full shadow-lg" />
-                    </div>
-                  </div>
-
-                  {form.noctourism && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Night Pressure</h3>
-                        <span className="text-2xl font-black italic text-indigo-400">{form.nightIntensity}/10</span>
-                      </div>
-                      <input type="range" min="1" max="10" step="1" value={form.nightIntensity} onChange={(e) => updateForm('nightIntensity', parseInt(e.target.value))} className="w-full h-3 bg-indigo-500/20 rounded-full appearance-none cursor-pointer accent-indigo-500" />
-                    </motion.div>
-                  )}
-                </div>
-              </div>
+                  <input type="range" min="1" max="10" step="1" value={form.nightIntensity} onChange={(e) => updateForm('nightIntensity', parseInt(e.target.value))} className="w-full h-4 bg-indigo-500/20 rounded-full appearance-none cursor-pointer accent-indigo-500" />
+                </motion.div>
+              )}
             </div>
+          </div>
+        );
+      };
 
-            <div className="flex justify-center pt-16">
-              <button type="submit" className={`px-24 py-12 rounded-full font-black text-3xl uppercase italic tracking-tighter shadow-2xl transition-all active:scale-95 ${form.noctourism ? 'bg-indigo-500 text-white shadow-indigo-500/40 hover:bg-indigo-400' : 'bg-slate-900 text-white hover:bg-slate-800'}`}>Reason Trip</button>
+      return (
+        <section className="max-w-2xl mx-auto space-y-10 py-8">
+          {/* Top bar */}
+          <div className="flex items-center justify-between">
+            <button onClick={() => setView('explore')} className="px-5 py-2 rounded-full border border-teal-500/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-widest hover:bg-teal-500/10">
+              ← {form.destination}
+            </button>
+            <div className="flex items-center gap-2">
+              {STEPS.map((s, i) => (
+                <button
+                  key={i}
+                  onClick={() => i < planStep && goToStep(i)}
+                  className={`transition-all rounded-full ${
+                    i === planStep ? 'w-8 h-2.5 bg-teal-500' :
+                    i < planStep ? 'w-2.5 h-2.5 bg-teal-500/40 hover:bg-teal-500/60 cursor-pointer' :
+                    'w-2.5 h-2.5 bg-slate-300 dark:bg-white/20 cursor-default'
+                  }`}
+                />
+              ))}
             </div>
-          </form>
-        </div>
-      </section>
-    );
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-30">{STEPS[planStep].num} / 04</span>
+          </div>
+
+          {/* Step content */}
+          <div className={`p-10 md:p-14 rounded-[4rem] backdrop-blur-3xl border border-white/20 shadow-2xl overflow-hidden ${form.noctourism ? 'bg-indigo-900/40' : 'bg-white/60'}`}>
+            <AnimatePresence custom={planDir} mode="wait">
+              <motion.div
+                key={planStep}
+                custom={planDir}
+                variants={stepVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.22, ease: 'easeInOut' }}
+              >
+                {stepContent()}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => goToStep(planStep - 1)}
+              disabled={planStep === 0}
+              className="px-8 py-4 rounded-full border-2 border-slate-200 dark:border-white/20 font-black uppercase tracking-widest text-[10px] disabled:opacity-20 hover:border-teal-400 transition-all"
+            >
+              Back
+            </button>
+            {isLast ? (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                type="button"
+                onClick={handleSubmit}
+                className={`px-16 py-6 rounded-full font-black text-xl uppercase italic tracking-tighter shadow-2xl transition-all ${form.noctourism ? 'bg-indigo-500 text-white shadow-indigo-500/40 hover:bg-indigo-400' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
+              >
+                Generate Trip
+              </motion.button>
+            ) : (
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                type="button"
+                onClick={() => goToStep(planStep + 1)}
+                className="px-16 py-6 rounded-full bg-teal-500 text-white font-black text-xl uppercase italic tracking-tighter shadow-xl shadow-teal-500/20 hover:bg-teal-400 transition-all"
+              >
+                Next
+              </motion.button>
+            )}
+          </div>
+        </section>
+      );
+    }
     
     return <section className="py-40 text-center opacity-40 italic">Coming Soon.</section>;
   };
