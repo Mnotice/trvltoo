@@ -10,6 +10,12 @@ import { db } from './firebase';
 import { collection, addDoc, onSnapshot, doc } from 'firebase/firestore';
 import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
 import { fetchItinerary, fetchWeather } from './apiService';
+import phuketImg from './assets/phuket.png';
+import krabiImg from './assets/krabi.png';
+import bangkokImg from './assets/bangkok.png';
+import chiangMaiImg from './assets/chiang_mai.png';
+import chiangRaiImg from './assets/chiang_rai.svg';
+import ayutthayaImg from './assets/ayutthaya.svg';
 
 // --- Security Protocol Components (#7 Error Boundaries) ---
 class SecurityErrorBoundary extends React.Component {
@@ -43,15 +49,15 @@ const PERSONAS = [
 ];
 
 const LOCATIONS = [
-  { id: 'Phuket', image: '/src/assets/phuket.png', desc: 'Islands & Nightlife' },
-  { id: 'Krabi', image: '/src/assets/krabi.png', desc: 'Cliffs & Caves' },
-  { id: 'Bangkok', image: '/src/assets/bangkok.png', desc: 'City & Culture' },
-  { id: 'Chiang Mai', image: '/src/assets/chiang_mai.png', desc: 'Mountains & Temples' },
+  { id: 'Phuket', image: phuketImg, desc: 'Islands & Nightlife' },
+  { id: 'Krabi', image: krabiImg, desc: 'Cliffs & Caves' },
+  { id: 'Bangkok', image: bangkokImg, desc: 'City & Culture' },
+  { id: 'Chiang Mai', image: chiangMaiImg, desc: 'Mountains & Temples' },
   { id: 'Koh Samui', image: 'https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?auto=format&fit=crop&q=80&w=800', desc: 'Beaches & Luxury' },
   { id: 'Koh Phangan', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=800', desc: 'Party & Wellness' },
   { id: 'Koh Tao', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800', desc: 'Diving & Reefs' },
-  { id: 'Chiang Rai', image: '/src/assets/chiang_rai.svg', desc: 'Temples & Tribes' },
-  { id: 'Ayutthaya', image: '/src/assets/ayutthaya.svg', desc: 'Ancient Ruins' },
+  { id: 'Chiang Rai', image: chiangRaiImg, desc: 'Temples & Tribes' },
+  { id: 'Ayutthaya', image: ayutthayaImg, desc: 'Ancient Ruins' },
   { id: 'Hua Hin', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=800', desc: 'Royal Coast' },
   { id: 'Pai', image: 'https://images.unsplash.com/photo-1535016120720-40c646be5580?auto=format&fit=crop&q=80&w=800', desc: 'Mountains & Mist' },
   { id: 'Koh Lanta', image: 'https://images.unsplash.com/photo-1539635278303-d4002c07eae3?auto=format&fit=crop&q=80&w=800', desc: 'Laid-back & Reefs' },
