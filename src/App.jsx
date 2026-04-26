@@ -309,32 +309,45 @@ const CalculatingVibe = ({ messageIndex }) => (
   </motion.div>
 );
 
-const ItineraryCard = ({ activity, isLocked, onToggleLock }) => (
-  <motion.div layout className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-white/5 group">
-    <div className="h-52 overflow-hidden">
-      <img src={activity.image} alt={activity.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-    </div>
-    <button
-      onClick={() => onToggleLock(activity.id)}
-      className={`absolute top-4 right-4 p-2.5 rounded-full backdrop-blur-sm border transition-all ${
-        isLocked
-          ? 'bg-teal-500 border-teal-400 text-white shadow-lg shadow-teal-500/40'
-          : 'bg-black/40 border-white/10 text-white/60 hover:bg-black/60 hover:text-white'
-      }`}
-    >
-      {isLocked ? <Lock className="w-4 h-4" /> : <Star className="w-4 h-4" />}
-    </button>
-    <div className="p-6 space-y-2">
-      <span className="text-[9px] font-black uppercase tracking-widest text-teal-400">{activity.category}</span>
-      <h4 className="text-xl font-black italic tracking-tighter uppercase text-white leading-tight">{activity.title}</h4>
-      <p className="text-[11px] text-white/50 font-medium uppercase tracking-wide flex items-center gap-1.5">
-        <MapPin className="w-3 h-3 flex-shrink-0" />{activity.subtitle}
-      </p>
-    </div>
-  </motion.div>
-);
+const ItineraryCard = ({ activity, isLocked, onToggleLock, userArea }) => {
+  const proximityBadge = (() => {
+    if (activity.area === 'day_trip')           return { label: 'Day Trip', cls: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' };
+    if (userArea && activity.area === userArea) return { label: 'Nearby',   cls: 'bg-teal-500/20  text-teal-300  border-teal-500/30'   };
+    return null;
+  })();
 
-const SlotSection = ({ label, color, activity, isLocked, onToggleLock, onReroll, canReroll }) => (
+  return (
+    <motion.div layout className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-white/5 group">
+      <div className="h-52 overflow-hidden">
+        <img src={activity.image} alt={activity.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+      </div>
+      {proximityBadge && (
+        <div className={`absolute top-4 left-4 px-3 py-1.5 rounded-full border text-[9px] font-black uppercase tracking-widest backdrop-blur-sm ${proximityBadge.cls}`}>
+          {proximityBadge.label}
+        </div>
+      )}
+      <button
+        onClick={() => onToggleLock(activity.id)}
+        className={`absolute top-4 right-4 p-2.5 rounded-full backdrop-blur-sm border transition-all ${
+          isLocked
+            ? 'bg-teal-500 border-teal-400 text-white shadow-lg shadow-teal-500/40'
+            : 'bg-black/40 border-white/10 text-white/60 hover:bg-black/60 hover:text-white'
+        }`}
+      >
+        {isLocked ? <Lock className="w-4 h-4" /> : <Star className="w-4 h-4" />}
+      </button>
+      <div className="p-6 space-y-2">
+        <span className="text-[9px] font-black uppercase tracking-widest text-teal-400">{activity.category}</span>
+        <h4 className="text-xl font-black italic tracking-tighter uppercase text-white leading-tight">{activity.title}</h4>
+        <p className="text-[11px] text-white/50 font-medium uppercase tracking-wide flex items-center gap-1.5">
+          <MapPin className="w-3 h-3 flex-shrink-0" />{activity.subtitle}
+        </p>
+      </div>
+    </motion.div>
+  );
+};
+
+const SlotSection = ({ label, color, activity, isLocked, onToggleLock, onReroll, canReroll, userArea }) => (
   <div className="space-y-6">
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-3">
@@ -352,7 +365,7 @@ const SlotSection = ({ label, color, activity, isLocked, onToggleLock, onReroll,
       </motion.button>
     </div>
     {activity ? (
-      <ItineraryCard activity={activity} isLocked={isLocked} onToggleLock={onToggleLock} />
+      <ItineraryCard activity={activity} isLocked={isLocked} onToggleLock={onToggleLock} userArea={userArea} />
     ) : (
       <div className="h-52 rounded-[2rem] border-2 border-dashed border-white/10 flex items-center justify-center">
         <span className="text-[10px] font-black uppercase tracking-widest text-white/20">No activities found</span>
@@ -991,6 +1004,7 @@ function VibeEngine() {
                       onToggleLock={handleToggleLock}
                       onReroll={() => handleReroll(slot)}
                       canReroll={pool.length > 1}
+                      userArea={form.area}
                     />
                   );
                 })}
