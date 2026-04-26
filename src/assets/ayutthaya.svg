@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#2a1a0a;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#4a2e10;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a0f05;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a0a2a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2a1a0a;stop-opacity:0" />
+    </linearGradient>
+    <linearGradient id="sunset" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#e07820;stop-opacity:0" />
+      <stop offset="40%" style="stop-color:#e07820;stop-opacity:0.35" />
+      <stop offset="60%" style="stop-color:#c04010;stop-opacity:0.25" />
+      <stop offset="100%" style="stop-color:#c04010;stop-opacity:0" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="800" height="400" fill="url(#bg)" />
+  <!-- Sky -->
+  <rect width="800" height="250" fill="url(#sky)" />
+  <!-- Sunset glow -->
+  <ellipse cx="400" cy="200" rx="350" ry="100" fill="url(#sunset)" />
+  <!-- Sun/glow on horizon -->
+  <ellipse cx="400" cy="220" rx="180" ry="40" fill="#e07820" opacity="0.15"/>
+  <!-- Water reflection at bottom -->
+  <rect x="0" y="310" width="800" height="90" fill="#1a0f05" opacity="0.6"/>
+  <ellipse cx="400" cy="330" rx="200" ry="20" fill="#e07820" opacity="0.08"/>
+  <!-- Prang/tower silhouettes (Ayutthaya style) -->
+  <!-- Main central prang -->
+  <g transform="translate(340,80)" opacity="0.92">
+    <polygon points="30,0 55,200 5,200" fill="#1a0f05"/>
+    <polygon points="30,20 52,200 8,200" fill="#2a1505" opacity="0.5"/>
+    <!-- Base tiers -->
+    <rect x="-10" y="190" width="80" height="14" fill="#1a0f05"/>
+    <rect x="-20" y="204" width="100" height="12" fill="#150a03"/>
+    <rect x="-30" y="216" width="120" height="10" fill="#100802"/>
+  </g>
+  <!-- Left smaller prang -->
+  <g transform="translate(220,130)" opacity="0.85">
+    <polygon points="22,0 40,160 4,160" fill="#1a0f05"/>
+    <rect x="-8" y="152" width="60" height="10" fill="#1a0f05"/>
+    <rect x="-15" y="162" width="74" height="8" fill="#150a03"/>
+  </g>
+  <!-- Right smaller prang -->
+  <g transform="translate(490,140)" opacity="0.85">
+    <polygon points="22,0 40,150 4,150" fill="#1a0f05"/>
+    <rect x="-8" y="142" width="60" height="10" fill="#1a0f05"/>
+    <rect x="-15" y="152" width="74" height="8" fill="#150a03"/>
+  </g>
+  <!-- Far left prang -->
+  <g transform="translate(100,165)" opacity="0.6">
+    <polygon points="16,0 28,120 4,120" fill="#1a0f05"/>
+    <rect x="-5" y="113" width="46" height="8" fill="#1a0f05"/>
+  </g>
+  <!-- Far right prang -->
+  <g transform="translate(630,170)" opacity="0.6">
+    <polygon points="16,0 28,115 4,115" fill="#1a0f05"/>
+    <rect x="-5" y="108" width="46" height="8" fill="#1a0f05"/>
+  </g>
+  <!-- Ground base -->
+  <rect x="0" y="290" width="800" height="110" fill="#1a0f05"/>
+  <!-- Horizontal ground line with ruins -->
+  <rect x="0" y="290" width="800" height="4" fill="#2a1505" opacity="0.8"/>
+  <!-- Stars -->
+  <circle cx="80" cy="50" r="1.5" fill="white" opacity="0.5"/>
+  <circle cx="150" cy="30" r="1" fill="white" opacity="0.4"/>
+  <circle cx="240" cy="65" r="1.5" fill="white" opacity="0.6"/>
+  <circle cx="560" cy="45" r="1" fill="white" opacity="0.4"/>
+  <circle cx="680" cy="55" r="1.5" fill="white" opacity="0.5"/>
+  <circle cx="740" cy="25" r="1" fill="white" opacity="0.3"/>
+  <!-- Overlay for text -->
+  <linearGradient id="overlay" x1="0%" y1="0%" x2="0%" y2="100%">
+    <stop offset="60%" style="stop-color:transparent" />
+    <stop offset="100%" style="stop-color:rgba(0,0,0,0.55)" />
+  </linearGradient>
+  <rect width="800" height="400" fill="url(#overlay)" />
+  <!-- Location name -->
+  <text x="400" y="348" font-family="Georgia, serif" font-size="36" font-weight="bold" fill="#e07820" text-anchor="middle" letter-spacing="6">AYUTTHAYA</text>
+  <text x="400" y="376" font-family="Arial, sans-serif" font-size="13" fill="#e8c89a" text-anchor="middle" letter-spacing="4" opacity="0.85">ANCIENT RUINS</text>
+</svg>

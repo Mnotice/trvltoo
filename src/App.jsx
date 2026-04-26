@@ -46,7 +46,15 @@ const LOCATIONS = [
   { id: 'Phuket', image: '/src/assets/phuket.png', desc: 'Islands & Nightlife' },
   { id: 'Krabi', image: '/src/assets/krabi.png', desc: 'Cliffs & Caves' },
   { id: 'Bangkok', image: '/src/assets/bangkok.png', desc: 'City & Culture' },
-  { id: 'Chiang Mai', image: '/src/assets/chiang_mai.png', desc: 'Mountains & Temples' }
+  { id: 'Chiang Mai', image: '/src/assets/chiang_mai.png', desc: 'Mountains & Temples' },
+  { id: 'Koh Samui', image: 'https://images.unsplash.com/photo-1483683804023-6ccdb62f86ef?auto=format&fit=crop&q=80&w=800', desc: 'Beaches & Luxury' },
+  { id: 'Koh Phangan', image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=800', desc: 'Party & Wellness' },
+  { id: 'Koh Tao', image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800', desc: 'Diving & Reefs' },
+  { id: 'Chiang Rai', image: '/src/assets/chiang_rai.svg', desc: 'Temples & Tribes' },
+  { id: 'Ayutthaya', image: '/src/assets/ayutthaya.svg', desc: 'Ancient Ruins' },
+  { id: 'Hua Hin', image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80&w=800', desc: 'Royal Coast' },
+  { id: 'Pai', image: 'https://images.unsplash.com/photo-1535016120720-40c646be5580?auto=format&fit=crop&q=80&w=800', desc: 'Mountains & Mist' },
+  { id: 'Koh Lanta', image: 'https://images.unsplash.com/photo-1539635278303-d4002c07eae3?auto=format&fit=crop&q=80&w=800', desc: 'Laid-back & Reefs' },
 ];
 
 const LOADING_MESSAGES = ["Consulting Agent...", "Scanning hidden gems...", "Optimizing energy...", "Finalizing your day..."];
@@ -63,6 +71,23 @@ const ENERGY_LABELS = [
   "Maximum Adrenaline Flow",
   "Limitless Energy Protocol"
 ];
+
+const SLOT_TIMES = {
+  Morning: '07:00 – 10:00',
+  Afternoon: '13:00 – 16:00',
+  Evening: '19:00 – 22:00',
+};
+
+const CATEGORY_TIPS = {
+  Adventure: 'Start early to beat the heat. Bring water and sunscreen.',
+  Culture: 'Dress modestly. Remove shoes before entering temples.',
+  Dining: 'Arrive before the rush or book a table in advance.',
+  Nature: 'Cooler and quieter in the morning — ideal timing.',
+  Lifestyle: 'Perfect for slow exploration and people-watching.',
+  Sports: 'Check local conditions and equipment hire beforehand.',
+  Luxury: 'Smart casual dress code often applies — plan accordingly.',
+  Sightseeing: 'Golden hour light transforms the scenery — worth the wait.',
+};
 
 const MOCK_EXPERT_RESULTS = {
   Solo: {
@@ -114,8 +139,8 @@ const WeatherTimeline = ({ hourly }) => {
   return (
     <div className="p-8 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-3xl overflow-hidden relative mb-10">
       <div className="flex justify-between items-end mb-6">
-        <div><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-500 mb-1">Atmosphere Pulse</h4><p className="text-3xl font-black italic tracking-tighter uppercase">{hoverIndex !== null ? `${points[hoverIndex].temp}°C` : `${max}°C Peak`}</p></div>
-        <div className="text-right text-[10px] font-black uppercase tracking-widest opacity-40">{hoverIndex !== null ? `${points[hoverIndex].hour}:00` : 'Daylight Cycle'}</div>
+        <div><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-400 mb-1">Atmosphere Pulse</h4><p className="text-3xl font-black italic tracking-tighter uppercase text-white">{hoverIndex !== null ? `${points[hoverIndex].temp}°C` : `${max}°C Peak`}</p></div>
+        <div className="text-right text-[10px] font-black uppercase tracking-widest text-white/50">{hoverIndex !== null ? `${points[hoverIndex].hour}:00` : 'Daylight Cycle'}</div>
       </div>
       <div className="relative h-24 group"><svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible"><motion.path d={pathData} fill="none" stroke="url(#g)" strokeWidth="4" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1 }} />
         <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#fbbf24" /><stop offset="50%" stopColor="#38bdf8" /><stop offset="100%" stopColor="#f97316" /></linearGradient></defs>
@@ -244,10 +269,16 @@ const CalculatingVibe = ({ messageIndex }) => (
   </motion.div>
 );
 
-const ItineraryCard = ({ activity, isLocked, onToggleLock }) => (
+const ItineraryCard = ({ activity, isLocked, onToggleLock, slot }) => (
   <motion.div layout className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-white/5 group">
-    <div className="h-52 overflow-hidden">
+    <div className="h-52 overflow-hidden relative">
       <img src={activity.image} alt={activity.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+      {slot && (
+        <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
+          <span className="text-[9px] font-black uppercase tracking-widest text-white/80">{SLOT_TIMES[slot]}</span>
+        </div>
+      )}
     </div>
     <button
       onClick={() => onToggleLock(activity.id)}
@@ -265,16 +296,22 @@ const ItineraryCard = ({ activity, isLocked, onToggleLock }) => (
       <p className="text-[11px] text-white/50 font-medium uppercase tracking-wide flex items-center gap-1.5">
         <MapPin className="w-3 h-3 flex-shrink-0" />{activity.subtitle}
       </p>
+      {CATEGORY_TIPS[activity.category] && (
+        <p className="text-[11px] text-white/40 leading-relaxed border-t border-white/8 pt-3 mt-1">
+          {CATEGORY_TIPS[activity.category]}
+        </p>
+      )}
     </div>
   </motion.div>
 );
 
-const SlotSection = ({ label, color, activity, isLocked, onToggleLock, onReroll, canReroll }) => (
+const SlotSection = ({ label, color, activity, isLocked, onToggleLock, onReroll, canReroll, slot }) => (
   <div className="space-y-6">
     <div className="flex items-center justify-between">
       <div className="flex items-center space-x-3">
         <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${color}`}>{label}</span>
         <div className="h-px w-12 bg-white/10" />
+        <span className="text-[9px] text-white/30 uppercase tracking-widest">{SLOT_TIMES[slot]}</span>
       </div>
       <motion.button
         whileTap={{ rotate: 180, scale: 0.9 }}
@@ -287,7 +324,7 @@ const SlotSection = ({ label, color, activity, isLocked, onToggleLock, onReroll,
       </motion.button>
     </div>
     {activity ? (
-      <ItineraryCard activity={activity} isLocked={isLocked} onToggleLock={onToggleLock} />
+      <ItineraryCard activity={activity} isLocked={isLocked} onToggleLock={onToggleLock} slot={slot} />
     ) : (
       <div className="h-52 rounded-[2rem] border-2 border-dashed border-white/10 flex items-center justify-center">
         <span className="text-[10px] font-black uppercase tracking-widest text-white/20">No activities found</span>
@@ -618,11 +655,14 @@ function VibeEngine() {
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.6em] text-teal-500 mb-3">Your Itinerary</p>
                   <h2 className="text-6xl font-black italic tracking-tighter uppercase text-white leading-[0.85]">{form.destination}</h2>
-                  <div className="flex flex-wrap items-center gap-4 mt-4">
+                  <div className="flex flex-wrap items-center gap-3 mt-4">
                     {[form.arrivalDate, form.persona, form.budget].map(tag => (
                       <span key={tag} className="px-4 py-1.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/60">{tag}</span>
                     ))}
                   </div>
+                  <p className="mt-4 text-sm text-white/40 max-w-lg leading-relaxed">
+                    {ENERGY_LABELS[form.energy - 1]} · {form.persona} travel style · {form.noctourism ? 'Night-forward itinerary' : 'Daytime-first itinerary'}
+                  </p>
                 </div>
                 <div className="flex items-center gap-3 mt-4">
                   <motion.button
@@ -647,10 +687,10 @@ function VibeEngine() {
                 <>
                   <WeatherTimeline hourly={weather.hourly} />
                   <div className="flex flex-wrap gap-3">
-                    <span className="px-5 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest text-amber-400">Peak {weather.maxTemp}°C</span>
-                    <span className="px-5 py-2 rounded-full bg-sky-500/10 border border-sky-500/20 text-[10px] font-black uppercase tracking-widest text-sky-400">Rain {weather.precipProb}%</span>
+                    <span className="px-5 py-2 rounded-full bg-amber-500/20 border border-amber-400/40 text-[10px] font-black uppercase tracking-widest text-amber-300">Peak {weather.maxTemp}°C</span>
+                    <span className="px-5 py-2 rounded-full bg-sky-500/20 border border-sky-400/40 text-[10px] font-black uppercase tracking-widest text-sky-300">Rain {weather.precipProb}%</span>
                     {weather.maxUv >= 8 && (
-                      <span className="px-5 py-2 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-black uppercase tracking-widest text-red-400">High UV {weather.maxUv} — Sunscreen Required</span>
+                      <span className="px-5 py-2 rounded-full bg-red-500/20 border border-red-400/40 text-[10px] font-black uppercase tracking-widest text-red-300">High UV {weather.maxUv} — Sunscreen Required</span>
                     )}
                   </div>
                 </>
@@ -669,6 +709,7 @@ function VibeEngine() {
                   return (
                     <SlotSection
                       key={slot}
+                      slot={slot}
                       label={label}
                       color={color}
                       activity={activity}
