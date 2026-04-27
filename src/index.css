@@ -36,6 +36,7 @@ h1, h2, h3, h4,
 
 p {
   font-family: var(--font-paragraph);
+  font-size: 1.1rem;
 }
 
 @layer utilities {
