@@ -279,7 +279,7 @@ async function generateAIItinerary(prefs) {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.8, maxOutputTokens: 1200 },
   });
 
   const result = await model.generateContent(buildPrompt(prefs));
