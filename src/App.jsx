@@ -14,6 +14,7 @@ import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from
 import { saveTrip, getUserTrips, deleteTrip } from './db/trips';
 import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
 import { fetchItinerary, fetchWeather, FEATURE_DATA, THAILAND_PLACEHOLDERS, getDestinationAreas } from './apiService';
+import { fetchActivitiesPool } from './activityPool';
 import { KNOWLEDGE_BASE } from './data/knowledgeBase';
 import { trackItineraryGenerated, trackActivityRerolled, trackActivityLocked, trackExport, trackShareLink } from './analytics';
 import { jsPDF } from 'jspdf';
@@ -894,6 +895,7 @@ function VibeEngine() {
   const [savedTrips, setSavedTrips] = useState([]);
   const [tripsLoading, setTripsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activityPool, setActivityPool] = useState([]);
 
   const loadTrips = async (uid) => {
     setTripsLoading(true);
@@ -1011,6 +1013,11 @@ function VibeEngine() {
 
   useEffect(() => { try { performSecurityStartupAudit(); } catch (err) { console.error("🚨 CRITICAL SYSTEM HALT:", err.message); } }, []);
   useEffect(() => { if (form.noctourism) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [form.noctourism]);
+  // Preload Firestore activity pool whenever destination changes
+  useEffect(() => {
+    setActivityPool([]);
+    fetchActivitiesPool(form.destination).then(setActivityPool);
+  }, [form.destination]);
   useEffect(() => { if (status === 'processing') { const interval = setInterval(() => setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length), 2500); return () => clearInterval(interval); } }, [status]);
 
   const updateForm = (key, val) => setForm(prev => ({ ...prev, [key]: val }));
@@ -1139,7 +1146,7 @@ function VibeEngine() {
     try {
       const sanitizedForm = sanitizeVibeData(form);
       const [itinerary, weatherData] = await Promise.all([
-        fetchItinerary(sanitizedForm),
+        fetchItinerary(sanitizedForm, activityPool),
         fetchWeather(sanitizedForm.destination),
       ]);
       const safeItinerary = itinerary || { Morning: [], Afternoon: [], Evening: [] };

@@ -336,10 +336,19 @@ async function generateAIItinerary(prefs) {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
-    generationConfig: { responseMimeType: 'application/json', temperature: 0.8, maxOutputTokens: 1200 },
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.8, maxOutputTokens: 3000 },
   });
 
-  const result = await model.generateContent(buildPrompt(prefs));
+  // Ask for 8 options per slot so re-rolls feel deep
+  const expandedPrompt = buildPrompt(prefs).replace(
+    'Provide exactly 3 options per slot (Morning / Afternoon / Evening) so the user can re-roll',
+    'Provide exactly 8 options per slot (Morning / Afternoon / Evening) so the user can re-roll many times'
+  ).replace(
+    /("id": "m[123]"|"id": "a[123]"|"id": "e[123]")/g,
+    m => m
+  );
+
+  const result = await model.generateContent(expandedPrompt);
   const raw = result.response.text();
   const parsed = JSON.parse(raw);
 
@@ -351,6 +360,44 @@ async function generateAIItinerary(prefs) {
   });
 
   return parsed;
+}
+
+// Insight-only call — used when Firestore pool provides the activities.
+// Much cheaper: ~400 tokens vs ~3000 for full generation.
+async function generateInsightOnly(prefs, topActivities) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const { GoogleGenerativeAI } = await import('@google/generative-ai');
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: { temperature: 0.8, maxOutputTokens: 400 },
+    });
+
+    const highlights = topActivities.slice(0, 6).map(a => a.title).join(', ');
+    const prompt = `
+You are a well-travelled friend giving personalised trip advice.
+
+Traveller:
+- Destination: ${prefs.destination}${prefs.area ? ` (staying in ${prefs.area})` : ''}
+- With: ${GROUP_CONTEXT[prefs.groupContext] || prefs.groupContext || 'solo'}
+- Interests: ${(prefs.interests || []).join(', ') || 'general'}
+- Dietary: ${DIETARY_CONTEXT[prefs.dietary] || 'no restrictions'}
+- Budget: ${BUDGET_CONTEXT[prefs.budget] || prefs.budget}
+- Energy: ${prefs.energy}/10
+
+Today's highlights include: ${highlights}
+
+Write a warm, personal 4–5 sentence briefing in second person. Open with a read of what kind of day this will be. Add one specific local tip for ${prefs.destination} right now. Close with something that speaks directly to their group context or dietary situation. Sound like a friend, not a guidebook.
+`.trim();
+
+    const result = await model.generateContent(prompt);
+    return result.response.text().trim();
+  } catch {
+    return null;
+  }
 }
 
 export const fetchWeather = async (destination) => {
@@ -376,7 +423,43 @@ export const fetchWeather = async (destination) => {
   }
 };
 
-export const fetchItinerary = async (prefs) => {
+export const fetchItinerary = async (prefs, firestorePool = null) => {
+  // ── Pool path (Firestore seeded) ─────────────────────────────────────────
+  // If a pool was passed in from the app (fetched from Firestore), use it for
+  // activities and only call the AI for the insight text.
+  if (firestorePool && firestorePool.length >= 15) {
+    const { buildSlottedPools } = await import('./activityPool');
+    const slotted = buildSlottedPools(firestorePool, prefs);
+
+    const hasEnough = ['Morning', 'Afternoon', 'Evening']
+      .every(s => slotted[s].length >= 3);
+
+    if (hasEnough) {
+      const topActivities = [
+        ...slotted.Morning.slice(0, 2),
+        ...slotted.Afternoon.slice(0, 2),
+        ...slotted.Evening.slice(0, 2),
+      ];
+
+      // Add images and normalise fields to match existing activity shape
+      const withImages = slot => slotted[slot].map(item => ({
+        ...item,
+        image: CATEGORY_IMAGES[item.category] || CATEGORY_IMAGES.Sightseeing,
+        cost:  item.costTier,
+      }));
+
+      const insight = await generateInsightOnly(prefs, topActivities);
+
+      return {
+        insight,
+        Morning:   withImages('Morning'),
+        Afternoon: withImages('Afternoon'),
+        Evening:   withImages('Evening'),
+      };
+    }
+  }
+
+  // ── AI path (fallback or pool not yet seeded) ────────────────────────────
   try {
     return await generateAIItinerary(prefs);
   } catch (err) {

@@ -2,12 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /trips/{tripId} {
-      // Individual document read is public (share-by-link model)
-      // Collection listing is blocked — no one can enumerate all trips
       allow get: if true;
       allow list: if false;
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+
+    // Activity pool — public read, admin-only write (seed script uses admin SDK)
+    match /activities/{destination}/items/{itemId} {
+      allow read: if true;
+      allow write: if false;
     }
   }
 }

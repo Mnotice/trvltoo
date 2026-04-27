@@ -26,3 +26,6 @@ dist-ssr
 # Environment variables
 .env
 .env.*
+
+# Firebase service account (never commit)
+functions/service-account.json
