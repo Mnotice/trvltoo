@@ -230,14 +230,30 @@ const BUDGET_CONTEXT = {
   '$$$': 'premium ($100+/day) — luxury resorts, fine dining, private tours',
 };
 
-const buildPrompt = ({ destination, persona, budget, energy, noctourism }) => `
+export const DESTINATION_AREAS = {
+  'Phuket':      ['Patong', 'Kata / Karon', 'Surin / Bang Tao', 'Rawai / Nai Harn', 'Phuket Town', 'North'],
+  'Krabi':       ['Ao Nang', 'Railay', 'Krabi Town'],
+  'Bangkok':     ['Sukhumvit', 'Silom / Sathorn', 'Old City / Rattanakosin', 'Riverside', 'Chatuchak'],
+  'Chiang Mai':  ['Old City', 'Nimmanhaemin', 'Riverside', 'Mae Rim'],
+  'Koh Samui':   ['Chaweng', 'Bophut / Fisherman\'s Village', 'Maenam', 'Choeng Mon', 'Lamai'],
+  'Koh Phangan': ['Haad Rin', 'Srithanu', 'Chaloklum', 'Thong Sala'],
+  'Koh Tao':     ['Sairee Beach', 'Mae Haad', 'Chalok Baan Kao'],
+  'Chiang Rai':  ['City Centre', 'Mae Fah Luang', 'Golden Triangle'],
+  'Hua Hin':     ['Central Beach', 'North Hua Hin', 'South Hua Hin'],
+  'Pai':         ['Walking Street', 'Riverside', 'Mae Yen'],
+  'Koh Lanta':   ['Ban Sala Dan', 'Long Beach', 'Kantiang Bay'],
+};
+
+export const getDestinationAreas = (destination) => DESTINATION_AREAS[destination] || [];
+
+const buildPrompt = ({ destination, persona, budget, energy, noctourism, area }) => `
 You are an expert Southeast Asia travel guide. Generate a personalised one-day itinerary for ${destination}, Thailand.
 
 Traveller profile:
 - Type: ${PERSONA_CONTEXT[persona] || persona}
 - Budget: ${BUDGET_CONTEXT[budget] || budget}
 - Energy level: ${energy}/10 (${energy <= 3 ? 'slow-paced and relaxing' : energy <= 6 ? 'moderate activity' : 'high-intensity, action-packed'})
-- Mode: ${noctourism ? 'Night-forward — prioritise evening/nightlife experiences' : 'Daytime-first — focus on daytime activities'}
+- Mode: ${noctourism ? 'Night-forward — prioritise evening/nightlife experiences' : 'Daytime-first — focus on daytime activities'}${area ? `\n- Staying in: ${area} — prioritise activities near this area; include day trips where relevant` : ''}
 
 Return ONLY a valid JSON object with exactly this structure — no markdown, no explanation:
 {

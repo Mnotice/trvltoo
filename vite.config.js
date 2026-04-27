@@ -1,34 +1,23 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// https://vite.dev/config/
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  return {
+export default defineConfig({
     base: '/trvltoo/',
     plugins: [react(), tailwindcss()],
-    server: {
-      proxy: {
-        '/api/foursquare': {
-          target: 'https://foursquare-places.p.rapidapi.com',
-          changeOrigin: true,
-          rewrite: (path) => {
-            // Support both standard Node URL (when proxying) and browser patterns
-            const params = path.split('?')[1] || '';
-            const searchParams = new URLSearchParams(params);
-            const dest = searchParams.get('destination') || 'Phuket';
-            return `/v3/places/search?near=${dest}&limit=20`;
+    build: {
+      rolldownOptions: {
+        output: {
+          manualChunks: (id) => {
+            if (id.includes('node_modules/jspdf'))        return 'pdf';
+            if (id.includes('node_modules/@sentry'))      return 'sentry';
+            if (id.includes('node_modules/framer-motion')) return 'motion';
+            if (id.includes('node_modules/firebase'))     return 'firebase';
+            if (id.includes('node_modules/react-router')) return 'vendor';
+            if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) return 'vendor';
           },
-          configure: (proxy, options) => {
-            proxy.on('proxyReq', (proxyReq, req, res) => {
-              proxyReq.setHeader('X-RapidAPI-Key', env.VITE_RAPIDAPI_KEY || env.RAPIDAPI_KEY);
-              proxyReq.setHeader('X-RapidAPI-Host', 'foursquare-places.p.rapidapi.com');
-              proxyReq.setHeader('Accept', 'application/json');
-            });
-          }
-        }
-      }
-    }
-  }
-})
+        },
+      },
+    },
+});
+

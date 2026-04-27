@@ -3,13 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   User, Heart, Utensils, Laptop,
   Moon, Sun, ArrowRight, Compass,
-  MapPin, Clock, CheckCircle2,
-  Dices, Star, Lock, Download, Mail
+  MapPin, Clock,
+  Dices, Star, Lock, Download, Mail,
+  Bookmark, BookmarkCheck, Trash2, LogOut, Share2,
+  CheckCircle, XCircle, UtensilsCrossed, Bus, Bed, Lightbulb
 } from 'lucide-react';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { collection, addDoc, onSnapshot, doc } from 'firebase/firestore';
+import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { saveTrip, getUserTrips, deleteTrip } from './db/trips';
 import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
-import { fetchItinerary, fetchWeather, FEATURE_DATA, THAILAND_PLACEHOLDERS } from './apiService';
+import { fetchItinerary, fetchWeather, FEATURE_DATA, THAILAND_PLACEHOLDERS, getDestinationAreas } from './apiService';
+import { KNOWLEDGE_BASE } from './data/knowledgeBase';
+import { trackItineraryGenerated, trackActivityRerolled, trackActivityLocked, trackExport, trackShareLink } from './analytics';
+import { jsPDF } from 'jspdf';
 import phuketImg from './assets/phuket.png';
 import krabiImg from './assets/krabi.png';
 import bangkokImg from './assets/bangkok.png';
@@ -39,8 +46,6 @@ class SecurityErrorBoundary extends React.Component {
 }
 
 // --- Constants & Config ---
-const N8N_WEBHOOK_URL = "https://mikhailnicholls6.app.n8n.cloud/webhook-test/travel-consultant";
-
 const PERSONAS = [
   { id: 'Solo', icon: User, label: 'Solo Adventurer', desc: 'Freedom and discovery.' },
   { id: 'Couple', icon: Heart, label: 'Romantic Couple', desc: 'Shared moments.' },
@@ -229,7 +234,7 @@ const SystemBootSequence = ({ onComplete }) => {
   );
 };
 
-const Header = ({ currentView, isDark, onToggleTheme, setView }) => (
+const Header = ({ currentView, isDark, onToggleTheme, setView, user, onSignIn, onSignOut }) => (
   <header className="fixed top-0 left-0 right-0 z-40 px-6 py-4 md:px-12 backdrop-blur-xl border-b border-white/10 flex items-center justify-between">
     <div className="flex items-center space-x-12">
       <div className="w-12 h-12 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center font-black text-xl shadow-2xl cursor-pointer" onClick={() => setView('explore')}>TML</div>
@@ -237,11 +242,23 @@ const Header = ({ currentView, isDark, onToggleTheme, setView }) => (
         {['Explore', 'Plan', 'Community'].map(item => (
           <button key={item} onClick={() => setView(item.toLowerCase())} className={`text-xs font-black uppercase tracking-[0.3em] transition-colors ${currentView === item.toLowerCase() ? 'text-teal-500' : 'text-slate-400 hover:text-white'}`}>{item}</button>
         ))}
+        {user && (
+          <button onClick={() => setView('trips')} className={`text-xs font-black uppercase tracking-[0.3em] transition-colors ${currentView === 'trips' ? 'text-teal-500' : 'text-slate-400 hover:text-white'}`}>My Trips</button>
+        )}
       </nav>
     </div>
-    <div className="flex items-center space-x-6">
+    <div className="flex items-center space-x-4">
        <button onClick={onToggleTheme} className="p-3 rounded-2xl bg-white/10">{isDark ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-slate-400" />}</button>
-       <button className="hidden md:block px-6 py-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest">Sign In</button>
+       {user ? (
+         <div className="hidden md:flex items-center gap-3">
+           {user.photoURL && <img src={user.photoURL} alt={user.displayName} className="w-9 h-9 rounded-full border-2 border-teal-500/40" />}
+           <button onClick={onSignOut} title="Sign out" className="p-2.5 rounded-2xl bg-white/10 hover:bg-white/20 transition-all">
+             <LogOut className="w-4 h-4 text-slate-400" />
+           </button>
+         </div>
+       ) : (
+         <button onClick={onSignIn} className="hidden md:block px-6 py-2.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest">Sign In</button>
+       )}
     </div>
   </header>
 );
@@ -428,6 +445,140 @@ const ArrivalStrip = ({ selected, onSelect }) => {
   );
 };
 
+const AreaSelector = ({ destination, selected, onSelect }) => {
+  const areas = getDestinationAreas(destination);
+  if (!areas.length) return null;
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3">
+        {areas.map(area => (
+          <motion.button
+            key={area}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            onClick={() => onSelect(selected === area ? '' : area)}
+            className={`px-5 py-3 rounded-[2rem] border-2 text-[11px] font-black uppercase tracking-widest transition-all ${
+              selected === area
+                ? 'border-teal-500 bg-teal-500 text-white shadow-lg shadow-teal-500/20'
+                : 'border-slate-200 dark:border-white/20 bg-white dark:bg-white/10 text-slate-600 dark:text-white/60 hover:border-teal-400'
+            }`}
+          >
+            {area}
+          </motion.button>
+        ))}
+      </div>
+      {selected && (
+        <motion.p initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+          className="text-[11px] font-bold uppercase tracking-widest text-teal-500 opacity-70">
+          Activities near {selected} will be prioritised — re-roll anytime to explore further.
+        </motion.p>
+      )}
+    </div>
+  );
+};
+
+const KnowledgePanel = ({ destId }) => {
+  const k = KNOWLEDGE_BASE[destId];
+  if (!k) return null;
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center space-x-4">
+        <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Local Intelligence</h3>
+        <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+      </div>
+
+      {/* When to Go */}
+      <div className="flex flex-wrap gap-3">
+        <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+          <CheckCircle className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+          <span className="text-[11px] font-bold text-emerald-300">{k.when.best}</span>
+        </div>
+        <div className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-red-500/10 border border-red-500/20">
+          <XCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+          <span className="text-[11px] font-bold text-red-300">{k.when.avoid}</span>
+        </div>
+      </div>
+
+      {/* Grid: Transport + Stay */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-6 rounded-[2rem] bg-white/60 dark:bg-white/5 border border-white/20 backdrop-blur-md space-y-3">
+          <div className="flex items-center gap-2">
+            <Bus className="w-4 h-4 text-teal-500 flex-shrink-0" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-500">Getting Around</p>
+          </div>
+          <p className="text-sm text-slate-700 dark:text-white/70 leading-relaxed">{k.transport}</p>
+        </div>
+        <div className="p-6 rounded-[2rem] bg-white/60 dark:bg-white/5 border border-white/20 backdrop-blur-md space-y-3">
+          <div className="flex items-center gap-2">
+            <Bed className="w-4 h-4 text-teal-500 flex-shrink-0" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-500">Where to Stay</p>
+          </div>
+          <div className="space-y-2">
+            {k.stay.map(s => (
+              <div key={s.tier} className="flex items-center gap-3">
+                <span className="w-8 text-[11px] font-black text-teal-400">{s.tier}</span>
+                <span className="text-sm text-slate-700 dark:text-white/70">{s.area}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Eat / Do / Avoid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-6 rounded-[2rem] bg-white/60 dark:bg-white/5 border border-white/20 backdrop-blur-md space-y-3">
+          <div className="flex items-center gap-2">
+            <UtensilsCrossed className="w-4 h-4 text-amber-500 flex-shrink-0" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-500">Eat This</p>
+          </div>
+          <ul className="space-y-2">
+            {k.eat.map((item, i) => (
+              <li key={i} className="text-sm text-slate-700 dark:text-white/70 leading-snug flex gap-2">
+                <span className="text-amber-400 flex-shrink-0 mt-0.5">—</span>{item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="p-6 rounded-[2rem] bg-white/60 dark:bg-white/5 border border-white/20 backdrop-blur-md space-y-3">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-teal-500 flex-shrink-0" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-500">Do This</p>
+          </div>
+          <ul className="space-y-2">
+            {k.doThis.map((item, i) => (
+              <li key={i} className="text-sm text-slate-700 dark:text-white/70 leading-snug flex gap-2">
+                <span className="text-teal-400 flex-shrink-0 mt-0.5">—</span>{item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="p-6 rounded-[2rem] bg-white/60 dark:bg-white/5 border border-white/20 backdrop-blur-md space-y-3">
+          <div className="flex items-center gap-2">
+            <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-400">Avoid</p>
+          </div>
+          <ul className="space-y-2">
+            {k.avoid.map((item, i) => (
+              <li key={i} className="text-sm text-slate-700 dark:text-white/70 leading-snug flex gap-2">
+                <span className="text-red-400 flex-shrink-0 mt-0.5">—</span>{item}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Local Tip */}
+      <div className="flex items-start gap-4 p-6 rounded-[2rem] bg-amber-500/10 border border-amber-500/20">
+        <Lightbulb className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400 mb-1">Local Tip</p>
+          <p className="text-sm text-amber-200/80 leading-relaxed">{k.localTip}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const DestinationDetail = ({ destId, onBack, onPlan }) => {
   const info = DESTINATION_INFO[destId] || {};
   const loc = LOCATIONS.find(l => l.id === destId) || {};
@@ -471,6 +622,9 @@ const DestinationDetail = ({ destId, onBack, onPlan }) => {
 
       {/* About */}
       <p className="text-base leading-relaxed text-slate-600 dark:text-white/60 max-w-2xl">{info.about}</p>
+
+      {/* Knowledge Base */}
+      <KnowledgePanel destId={destId} />
 
       {/* Activity Preview */}
       {featured && (
@@ -523,7 +677,8 @@ function VibeEngine() {
     budget: '$$',
     energy: 5,
     noctourism: false,
-    nightIntensity: 5
+    nightIntensity: 5,
+    area: '',
   });
   const [status, setStatus] = useState('idle');
   const [genError, setGenError] = useState(null);
@@ -537,6 +692,117 @@ function VibeEngine() {
   const [selectedDestId, setSelectedDestId] = useState(null);
   const [planStep, setPlanStep] = useState(0);
   const [planDir, setPlanDir] = useState(1);
+  const [user, setUser] = useState(null);
+  const [savedId, setSavedId] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [savedTrips, setSavedTrips] = useState([]);
+  const [tripsLoading, setTripsLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const loadTrips = async (uid) => {
+    setTripsLoading(true);
+    try {
+      const trips = await getUserTrips(uid);
+      setSavedTrips(trips);
+    } catch (err) {
+      console.error('Failed to load trips:', err);
+    } finally {
+      setTripsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      if (u) loadTrips(u.uid);
+      else setSavedTrips([]);
+    });
+    return unsub;
+  }, []);
+
+  const handleSignIn = async () => {
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (err) {
+      console.error('Sign in error:', err);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+    setSavedTrips([]);
+    setSavedId(null);
+  };
+
+  const handleSaveTrip = async () => {
+    if (!user) { handleSignIn(); return; }
+    setSaving(true);
+    try {
+      const tripData = {
+        destination: form.destination,
+        arrivalDate: form.arrivalDate,
+        persona: form.persona,
+        budget: form.budget,
+        energy: form.energy,
+        noctourism: form.noctourism,
+        area: form.area || null,
+        insight: insight || null,
+        slots: {
+          Morning: pools.Morning[picks.Morning] || null,
+          Afternoon: pools.Afternoon[picks.Afternoon] || null,
+          Evening: pools.Evening[picks.Evening] || null,
+        },
+      };
+      const id = await saveTrip(user.uid, tripData);
+      setSavedId(id);
+      loadTrips(user.uid);
+    } catch (err) {
+      console.error('Save trip error:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLoadTrip = (trip) => {
+    setForm(prev => ({
+      ...prev,
+      destination: trip.destination,
+      arrivalDate: trip.arrivalDate,
+      persona: trip.persona,
+      budget: trip.budget,
+      energy: trip.energy,
+      noctourism: trip.noctourism ?? false,
+      area: trip.area || '',
+    }));
+    if (trip.slots) {
+      const toPool = (act) => act ? [act] : [];
+      setPools({
+        Morning: toPool(trip.slots.Morning),
+        Afternoon: toPool(trip.slots.Afternoon),
+        Evening: toPool(trip.slots.Evening),
+      });
+      setPicks({ Morning: 0, Afternoon: 0, Evening: 0 });
+    }
+    setInsight(trip.insight || null);
+    setSavedId(trip.id);
+    setStatus('completed');
+  };
+
+  const handleDeleteTrip = async (tripId) => {
+    await deleteTrip(tripId);
+    setSavedTrips(prev => prev.filter(t => t.id !== tripId));
+    if (savedId === tripId) setSavedId(null);
+  };
+
+  const handleShare = () => {
+    if (!savedId) return;
+    const url = `${window.location.origin}/trvltoo/trip/${savedId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      trackShareLink(form.destination);
+    });
+  };
 
   const goToStep = (next) => {
     setPlanDir(next > planStep ? 1 : -1);
@@ -557,12 +823,15 @@ function VibeEngine() {
     let next;
     do { next = Math.floor(Math.random() * pool.length); } while (next === picks[slot] && pool.length > 1);
     setPicks(prev => ({ ...prev, [slot]: next }));
+    trackActivityRerolled(slot, form.destination);
   };
 
   const handleToggleLock = (id) => {
     setLocked(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      const wasLocked = next.has(id);
+      wasLocked ? next.delete(id) : next.add(id);
+      if (!wasLocked) trackActivityLocked(id, form.destination);
       return next;
     });
   };
@@ -600,6 +869,59 @@ function VibeEngine() {
     a.download = `trvltoo-${form.destination.toLowerCase().replace(' ', '-')}.md`;
     a.click();
     URL.revokeObjectURL(url);
+    trackExport('markdown', form.destination);
+  };
+
+  const exportPDF = () => {
+    const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+    const slotColors = { Morning: [251, 191, 36], Afternoon: [56, 189, 248], Evening: [99, 102, 241] };
+
+    pdf.setFillColor(15, 23, 42);
+    pdf.rect(0, 0, 595, 841, 'F');
+    pdf.setTextColor(20, 184, 166);
+    pdf.setFontSize(9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('TRVLTOO — ITINERARY', 40, 50);
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(32);
+    pdf.text(form.destination.toUpperCase(), 40, 90);
+    pdf.setFontSize(9);
+    pdf.setTextColor(150, 150, 150);
+    pdf.text(`${form.arrivalDate}  ·  ${form.persona}  ·  ${form.budget}${form.area ? `  ·  ${form.area}` : ''}`, 40, 110);
+    pdf.setDrawColor(255, 255, 255, 20);
+    pdf.line(40, 125, 555, 125);
+
+    let y = 155;
+    ['Morning', 'Afternoon', 'Evening'].forEach(slot => {
+      const act = pools[slot]?.[picks[slot]];
+      const [r, g, b] = slotColors[slot];
+      pdf.setTextColor(r, g, b);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(slot.toUpperCase(), 40, y);
+      y += 18;
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(16);
+      pdf.text(act?.title ?? 'No activity selected', 40, y, { maxWidth: 515 });
+      y += 20;
+      pdf.setTextColor(120, 120, 120);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${act?.subtitle ?? ''}  ·  ${act?.category ?? ''}`, 40, y);
+      y += 14;
+      if (act?.tip) {
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(act.tip, 40, y, { maxWidth: 515 });
+        y += 14;
+      }
+      y += 22;
+    });
+
+    pdf.setTextColor(60, 60, 60);
+    pdf.setFontSize(8);
+    pdf.text('Generated by TRVLTOO — trvltoo.com', 40, 820);
+    pdf.save(`trvltoo-${form.destination.toLowerCase().replace(/ /g, '-')}.pdf`);
+    trackExport('pdf', form.destination);
   };
 
   const emailItinerary = () => {
@@ -613,6 +935,7 @@ function VibeEngine() {
     setGenError(null);
     setStatus('processing');
     setLocked(new Set());
+    setSavedId(null);
     try {
       const sanitizedForm = sanitizeVibeData(form);
       const [itinerary, weatherData] = await Promise.all([
@@ -625,6 +948,7 @@ function VibeEngine() {
       setPicks({ Morning: 0, Afternoon: 0, Evening: 0 });
       setWeather(weatherData);
       setStatus('completed');
+      trackItineraryGenerated(sanitizedForm.destination, sanitizedForm.persona, sanitizedForm.budget);
     } catch (err) {
       setStatus('idle');
       if (err.message === 'RATE_LIMIT') {
@@ -666,12 +990,14 @@ function VibeEngine() {
     if (view === 'plan') {
       const STEPS = [
         { num: '01', label: 'Arrival Date' },
-        { num: '02', label: 'Travel Persona' },
-        { num: '03', label: 'Energy Level' },
-        { num: '04', label: 'Budget' },
-        { num: '05', label: 'Trip Mode' },
+        { num: '02', label: 'Your Area' },
+        { num: '03', label: 'Travel Persona' },
+        { num: '04', label: 'Energy Level' },
+        { num: '05', label: 'Budget' },
+        { num: '06', label: 'Trip Mode' },
       ];
       const isLast = planStep === STEPS.length - 1;
+
       const stepVariants = {
         enter: (dir) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
         center: { x: 0, opacity: 1 },
@@ -693,7 +1019,22 @@ function VibeEngine() {
         if (planStep === 1) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">02 — Travel Persona</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">02 — Your Area</p>
+              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Where are you <span className="text-teal-500">staying</span> in {form.destination}?</h2>
+            </div>
+            <div className="pt-4">
+              {getDestinationAreas(form.destination).length > 0 ? (
+                <AreaSelector destination={form.destination} selected={form.area} onSelect={(a) => updateForm('area', a)} />
+              ) : (
+                <p className="text-white/40 italic text-sm">Area data coming soon for {form.destination} — we'll surface the best activities regardless.</p>
+              )}
+            </div>
+          </div>
+        );
+        if (planStep === 2) return (
+          <div className="space-y-10">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">03 — Travel Persona</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Who are you <span className="text-teal-500">travelling as?</span></h2>
             </div>
             <div className="grid grid-cols-2 gap-4 pt-4">
@@ -701,10 +1042,10 @@ function VibeEngine() {
             </div>
           </div>
         );
-        if (planStep === 2) return (
+        if (planStep === 3) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">03 — Energy Level</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">04 — Energy Level</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">How <span className="text-teal-500">intense</span> should this day be?</h2>
             </div>
             <div className="pt-4 space-y-10">
@@ -734,10 +1075,10 @@ function VibeEngine() {
             </div>
           </div>
         );
-        if (planStep === 3) return (
+        if (planStep === 4) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">04 — Budget</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">05 — Budget</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">What's your <span className="text-teal-500">daily spend</span> comfort zone?</h2>
             </div>
             <div className="grid grid-cols-3 gap-4 pt-4">
@@ -766,10 +1107,10 @@ function VibeEngine() {
             </div>
           </div>
         );
-        if (planStep === 4) return (
+        if (planStep === 5) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">05 — Trip Mode</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">06 — Trip Mode</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Day or <span className="text-teal-500">night</span> first?</h2>
             </div>
             <div className="pt-4 space-y-6">
@@ -819,7 +1160,7 @@ function VibeEngine() {
                 />
               ))}
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-30">{STEPS[planStep].num} / 05</span>
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-30">{STEPS[planStep].num} / 06</span>
           </div>
 
           {/* Step content */}
@@ -885,6 +1226,76 @@ function VibeEngine() {
       );
     }
     
+    if (view === 'trips') {
+      if (!user) return (
+        <section className="py-40 text-center space-y-8">
+          <h2 className="text-4xl font-black italic uppercase opacity-60">Sign in to see your saved trips</h2>
+          <motion.button whileTap={{ scale: 0.97 }} onClick={handleSignIn}
+            className="px-12 py-5 rounded-full bg-teal-500 text-white font-black text-sm uppercase tracking-widest shadow-xl shadow-teal-500/20 hover:bg-teal-400 transition-all">
+            Sign in with Google
+          </motion.button>
+        </section>
+      );
+      return (
+        <section className="space-y-10">
+          <div>
+            <h2 className="text-5xl font-black italic uppercase leading-[0.9] mb-4">My <span className="text-teal-500">Trips</span></h2>
+            <p className="text-sm opacity-60">Your saved itineraries.</p>
+          </div>
+          {tripsLoading ? (
+            <div className="py-20 text-center opacity-40 italic text-sm">Loading trips...</div>
+          ) : savedTrips.length === 0 ? (
+            <div className="py-20 text-center space-y-4">
+              <p className="opacity-40 italic text-sm">No saved trips yet.</p>
+              <button onClick={() => setView('explore')} className="px-8 py-3 rounded-full border-2 border-teal-500/30 text-teal-500 text-[10px] font-black uppercase tracking-widest hover:bg-teal-500/10 transition-all">
+                Start Planning
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {savedTrips.map((trip, i) => (
+                <motion.div
+                  key={trip.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                  className="p-8 rounded-[3rem] bg-white/60 dark:bg-white/5 border border-white/20 backdrop-blur-md space-y-4 hover:border-teal-500/40 transition-all"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-500 mb-1">{trip.arrivalDate}</p>
+                      <h3 className="text-2xl font-black italic uppercase tracking-tighter text-slate-900 dark:text-white">{trip.destination}</h3>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTrip(trip.id)}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-red-500/20 transition-all group"
+                      title="Delete trip"
+                    >
+                      <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-400 transition-colors" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {[trip.persona, trip.budget, `Energy ${trip.energy}`].map(tag => (
+                      <span key={tag} className="px-3 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">{tag}</span>
+                    ))}
+                  </div>
+                  {trip.insight && (
+                    <p className="text-[12px] text-slate-500 dark:text-white/50 italic leading-relaxed line-clamp-2">{trip.insight}</p>
+                  )}
+                  <button
+                    onClick={() => handleLoadTrip(trip)}
+                    className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 dark:hover:bg-white/90 transition-all"
+                  >
+                    Load Itinerary
+                  </button>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </section>
+      );
+    }
+
     return <section className="py-40 text-center opacity-40 italic">Coming Soon.</section>;
   };
 
@@ -894,7 +1305,7 @@ function VibeEngine() {
          {isBooting && <SystemBootSequence onComplete={() => setIsBooting(false)} />}
       </AnimatePresence>
       
-      <Header currentView={view} isDark={form.noctourism} onToggleTheme={() => updateForm('noctourism', !form.noctourism)} setView={setView} />
+      <Header currentView={view} isDark={form.noctourism} onToggleTheme={() => updateForm('noctourism', !form.noctourism)} setView={setView} user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} />
       <AnimatePresence>{status === 'processing' && <CalculatingVibe messageIndex={messageIndex} />}</AnimatePresence>
       <div className="max-w-7xl mx-auto"><main>{renderContent()}
         <AnimatePresence>{status === 'completed' && (
@@ -923,6 +1334,39 @@ function VibeEngine() {
                 <div className="flex items-center gap-3 mt-4">
                   <motion.button
                     whileTap={{ scale: 0.95 }}
+                    onClick={handleSaveTrip}
+                    disabled={saving}
+                    title={user ? (savedId ? 'Saved!' : 'Save trip') : 'Sign in to save'}
+                    className={`p-4 rounded-2xl border transition-all ${
+                      savedId
+                        ? 'bg-teal-500/20 border-teal-500/40 text-teal-400'
+                        : 'bg-white/10 hover:bg-white/20 border-white/10 text-white'
+                    } disabled:opacity-40`}
+                  >
+                    {savedId ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleShare}
+                    disabled={!savedId}
+                    title={savedId ? (copied ? 'Link copied!' : 'Copy share link') : 'Save trip first to share'}
+                    className={`p-4 rounded-2xl border transition-all relative ${
+                      copied
+                        ? 'bg-teal-500/30 border-teal-500/50 text-teal-300'
+                        : savedId
+                          ? 'bg-white/10 hover:bg-white/20 border-white/10 text-white'
+                          : 'bg-white/5 border-white/5 text-white/20 cursor-not-allowed'
+                    }`}
+                  >
+                    <Share2 className="w-5 h-5" />
+                    {copied && (
+                      <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-lg bg-teal-500 text-white text-[10px] font-black uppercase tracking-wide whitespace-nowrap">
+                        Copied!
+                      </span>
+                    )}
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     onClick={emailItinerary}
                     title="Email itinerary to yourself"
                     className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all"
@@ -931,11 +1375,19 @@ function VibeEngine() {
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
-                    onClick={exportMarkdown}
-                    title="Export to Markdown"
+                    onClick={exportPDF}
+                    title="Export to PDF"
                     className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all"
                   >
                     <Download className="w-5 h-5 text-white" />
+                  </motion.button>
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
+                    onClick={exportMarkdown}
+                    title="Export to Markdown"
+                    className="p-4 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 transition-all text-[9px] font-black text-white/60 uppercase tracking-widest"
+                  >
+                    .MD
                   </motion.button>
                   <button
                     onClick={() => { setStatus('idle'); setLocked(new Set()); }}

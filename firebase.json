@@ -1,4 +1,7 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -8,8 +11,11 @@
     ],
     "rewrites": [
       {
-        "source": "/api/foursquare",
-        "function": "foursquareProxy"
+        "source": "/trip/**",
+        "run": {
+          "serviceId": "tripcard",
+          "region": "us-central1"
+        }
       },
       {
         "source": "**",

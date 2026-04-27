@@ -10,8 +10,6 @@ export const performSecurityStartupAudit = () => {
     'VITE_FIREBASE_STORAGE_BUCKET',
     'VITE_FIREBASE_MESSAGING_SENDER_ID',
     'VITE_FIREBASE_APP_ID',
-    'VITE_FIREBASE_MEASUREMENT_ID',
-    'VITE_RAPIDAPI_KEY'
   ];
   
   const missing = REQUIRED_KEYS.filter(key => !import.meta.env[key]);
