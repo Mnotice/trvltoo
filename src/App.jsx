@@ -9,7 +9,7 @@ import {
 import { db } from './firebase';
 import { collection, addDoc, onSnapshot, doc } from 'firebase/firestore';
 import { performSecurityStartupAudit, sanitizeVibeData } from './utils/security';
-import { fetchItinerary, fetchWeather } from './apiService';
+import { fetchItinerary, fetchWeather, FEATURE_DATA, THAILAND_PLACEHOLDERS } from './apiService';
 import phuketImg from './assets/phuket.png';
 import krabiImg from './assets/krabi.png';
 import bangkokImg from './assets/bangkok.png';
@@ -62,6 +62,21 @@ const LOCATIONS = [
   { id: 'Pai', image: 'https://images.unsplash.com/photo-1535016120720-40c646be5580?auto=format&fit=crop&q=80&w=800', desc: 'Mountains & Mist' },
   { id: 'Koh Lanta', image: 'https://images.unsplash.com/photo-1539635278303-d4002c07eae3?auto=format&fit=crop&q=80&w=800', desc: 'Laid-back & Reefs' },
 ];
+
+const DESTINATION_INFO = {
+  'Phuket':      { tagline: 'Islands, nightlife & legendary beaches', about: "Thailand's largest island blends vibrant beach resorts with cultural depth. From the white sands of Kata and Karon to the Sino-Portuguese streets of Phuket Town, it caters to every pace.", highlights: [{ label: 'Best For', value: 'Beach life & island hopping' }, { label: 'Best Season', value: 'Nov – Apr' }, { label: 'Vibe', value: 'Lively & social' }, { label: 'Suggested Stay', value: '3–5 days' }] },
+  'Krabi':       { tagline: 'Limestone cliffs, caves & emerald water', about: 'Krabi is defined by dramatic karst scenery rising from the Andaman Sea. Railay Beach, accessible only by longtail boat, rivals anywhere in Southeast Asia for sheer beauty.', highlights: [{ label: 'Best For', value: 'Rock climbing & kayaking' }, { label: 'Best Season', value: 'Oct – Apr' }, { label: 'Vibe', value: 'Adventure & scenic' }, { label: 'Suggested Stay', value: '3–5 days' }] },
+  'Bangkok':     { tagline: 'Temples, street food & relentless energy', about: 'A city of contrasts — ancient wats beside glass skyscrapers, tuk-tuks weaving past luxury malls, and Michelin-starred street carts beneath rooftop bars. Bangkok rewards every traveller type.', highlights: [{ label: 'Best For', value: 'Culture, food & nightlife' }, { label: 'Best Season', value: 'Nov – Feb' }, { label: 'Vibe', value: 'Electric & urban' }, { label: 'Suggested Stay', value: '2–4 days' }] },
+  'Chiang Mai':  { tagline: 'Mountains, temples & northern soul', about: "Thailand's northern capital holds 300+ temples surrounded by forested mountains and hill tribe villages. The moat-ringed Old City brims with artisan cafés, cooking schools, and vibrant night markets.", highlights: [{ label: 'Best For', value: 'Culture & trekking' }, { label: 'Best Season', value: 'Nov – Feb' }, { label: 'Vibe', value: 'Spiritual & creative' }, { label: 'Suggested Stay', value: '3–5 days' }] },
+  'Koh Samui':   { tagline: 'Luxury resorts on a palm-fringed island', about: "The Gulf of Thailand's most developed island balances upscale beach clubs and five-star resorts with coconut-shaded roads and quiet fishing villages in the interior.", highlights: [{ label: 'Best For', value: 'Luxury & spa retreats' }, { label: 'Best Season', value: 'Dec – Apr' }, { label: 'Vibe', value: 'Upscale & relaxed' }, { label: 'Suggested Stay', value: '3–5 days' }] },
+  'Koh Phangan': { tagline: 'Full Moon parties & jungle wellness', about: 'Famous for the Full Moon Party, Koh Phangan has evolved into a destination for both high-energy beach raves and serious wellness retreats — often on the same stretch of coastline.', highlights: [{ label: 'Best For', value: 'Parties & yoga' }, { label: 'Best Season', value: 'Dec – Apr' }, { label: 'Vibe', value: 'Eclectic & free-spirited' }, { label: 'Suggested Stay', value: '3–7 days' }] },
+  'Koh Tao':     { tagline: 'World-class diving on a tiny island', about: 'One of the best places on earth to get dive-certified — warm clear water, healthy coral reefs, and a laid-back village atmosphere with surprisingly good restaurants.', highlights: [{ label: 'Best For', value: 'Diving & snorkelling' }, { label: 'Best Season', value: 'Dec – Apr' }, { label: 'Vibe', value: 'Relaxed & sporty' }, { label: 'Suggested Stay', value: '3–7 days' }] },
+  'Chiang Rai':  { tagline: 'White Temple, hill tribes & border mystique', about: "Thailand's northernmost city sits near the Golden Triangle. The White Temple, Blue Temple, and surrounding hill tribe villages make it one of the most visually distinct destinations in Asia.", highlights: [{ label: 'Best For', value: 'Temples & trekking' }, { label: 'Best Season', value: 'Nov – Feb' }, { label: 'Vibe', value: 'Mystical & offbeat' }, { label: 'Suggested Stay', value: '2–3 days' }] },
+  'Ayutthaya':   { tagline: "Ancient ruins of Thailand's golden capital", about: "Once one of the largest cities on earth, Ayutthaya's ruined temples and headless Buddha statues span a river island 80km from Bangkok — a living open-air museum of Thai history.", highlights: [{ label: 'Best For', value: 'History & cycling' }, { label: 'Best Season', value: 'Nov – Feb' }, { label: 'Vibe', value: 'Cultural & reflective' }, { label: 'Suggested Stay', value: '1–2 days' }] },
+  'Hua Hin':     { tagline: 'Royal coast, golf & quiet beach days', about: "Thailand's oldest beach resort town has been the royal family's seaside retreat for a century. A long calm beach, colonial-era hotel, night markets, and golf make it a reliable retreat.", highlights: [{ label: 'Best For', value: 'Families & relaxation' }, { label: 'Best Season', value: 'Apr – Oct' }, { label: 'Vibe', value: 'Relaxed & royal' }, { label: 'Suggested Stay', value: '2–3 days' }] },
+  'Pai':         { tagline: 'Mountain mist, waterfalls & hippie vibes', about: 'The 762 curves of the mountain road are worth it. This small valley town in Mae Hong Son draws free spirits with hot springs, waterfalls, canyon overlooks, and creative café culture.', highlights: [{ label: 'Best For', value: 'Nature & slow travel' }, { label: 'Best Season', value: 'Nov – Feb' }, { label: 'Vibe', value: 'Bohemian & serene' }, { label: 'Suggested Stay', value: '2–4 days' }] },
+  'Koh Lanta':   { tagline: "Laid-back reefs, mangroves & long evenings", about: "Krabi's quieter sibling — a long island of undeveloped beaches, mangrove-edged roads, and a charming old town on stilts above the sea. Ideal for slowing down.", highlights: [{ label: 'Best For', value: 'Snorkelling & kayaking' }, { label: 'Best Season', value: 'Nov – Apr' }, { label: 'Vibe', value: 'Unhurried & natural' }, { label: 'Suggested Stay', value: '3–5 days' }] },
+};
 
 const LOADING_MESSAGES = ["Consulting Agent...", "Scanning hidden gems...", "Optimizing energy...", "Finalizing your day..."];
 
@@ -278,7 +293,12 @@ const CalculatingVibe = ({ messageIndex }) => (
 const ItineraryCard = ({ activity, isLocked, onToggleLock, slot }) => (
   <motion.div layout className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-white/5 group">
     <div className="h-52 overflow-hidden relative">
-      <img src={activity.image} alt={activity.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+      <img
+        src={activity.image || THAILAND_PLACEHOLDERS[0]}
+        alt={activity.title}
+        onError={e => { e.target.src = THAILAND_PLACEHOLDERS[Math.abs(activity.id?.charCodeAt(0) ?? 0) % THAILAND_PLACEHOLDERS.length]; }}
+        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+      />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       {slot && (
         <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
@@ -408,6 +428,92 @@ const ArrivalStrip = ({ selected, onSelect }) => {
   );
 };
 
+const DestinationDetail = ({ destId, onBack, onPlan }) => {
+  const info = DESTINATION_INFO[destId] || {};
+  const loc = LOCATIONS.find(l => l.id === destId) || {};
+  const featured = FEATURE_DATA[destId];
+
+  return (
+    <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl mx-auto space-y-10 pb-20">
+      {/* Nav */}
+      <div className="flex items-center justify-between pt-2">
+        <button onClick={onBack} className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity">
+          <ArrowRight className="w-4 h-4 rotate-180" /> All Destinations
+        </button>
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onPlan}
+          className="px-8 py-3 rounded-full bg-teal-500 text-white font-black text-[10px] uppercase tracking-widest shadow-lg shadow-teal-500/20 hover:bg-teal-400 transition-colors">
+          Plan My Day Here →
+        </motion.button>
+      </div>
+
+      {/* Hero */}
+      <div className="relative h-[28rem] rounded-[3rem] overflow-hidden">
+        <img src={loc.image} alt={destId}
+          onError={e => { e.target.src = THAILAND_PLACEHOLDERS[0]; }}
+          className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/20 to-transparent" />
+        <div className="absolute bottom-10 left-10">
+          <p className="text-teal-400 text-[10px] font-black uppercase tracking-[0.4em] mb-2">{loc.desc}</p>
+          <h1 className="text-white text-6xl font-black italic uppercase tracking-tighter leading-none">{destId}</h1>
+          <p className="text-white/60 text-sm mt-2 font-medium">{info.tagline}</p>
+        </div>
+      </div>
+
+      {/* Highlights */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {(info.highlights || []).map(h => (
+          <div key={h.label} className="p-6 rounded-[2rem] bg-white/60 dark:bg-white/5 border border-white/20 backdrop-blur-md">
+            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-teal-500 mb-2">{h.label}</p>
+            <p className="text-sm font-bold text-slate-800 dark:text-white leading-snug">{h.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* About */}
+      <p className="text-base leading-relaxed text-slate-600 dark:text-white/60 max-w-2xl">{info.about}</p>
+
+      {/* Activity Preview */}
+      {featured && (
+        <div className="space-y-8">
+          <div className="flex items-center space-x-4">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Things To Do</h3>
+            <div className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+          </div>
+          {['Morning', 'Afternoon', 'Evening'].map(slot => (
+            <div key={slot} className="space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-teal-500">{slot}</p>
+              <div className="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 no-scrollbar">
+                {(featured[slot] || []).map((act, i) => (
+                  <div key={act.id} className="flex-shrink-0 w-56 rounded-[2rem] overflow-hidden border border-white/10 bg-white dark:bg-white/5">
+                    <div className="h-32 overflow-hidden">
+                      <img src={act.image || THAILAND_PLACEHOLDERS[i % THAILAND_PLACEHOLDERS.length]} alt={act.title}
+                        onError={e => { e.target.src = THAILAND_PLACEHOLDERS[i % THAILAND_PLACEHOLDERS.length]; }}
+                        className="w-full h-full object-cover" />
+                    </div>
+                    <div className="p-4">
+                      <span className="text-[9px] font-black uppercase tracking-widest text-teal-500">{act.category}</span>
+                      <p className="text-sm font-black italic uppercase tracking-tight text-slate-900 dark:text-white leading-tight mt-1">{act.title}</p>
+                      <p className="text-[10px] text-slate-400 mt-1 flex items-center gap-1"><MapPin className="w-2.5 h-2.5" />{act.subtitle}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* CTA */}
+      <div className="flex justify-center pt-6">
+        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={onPlan}
+          className="px-20 py-8 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-2xl uppercase italic tracking-tighter shadow-2xl hover:bg-slate-800 dark:hover:bg-white/90 transition-colors">
+          Plan My Day in {destId}
+        </motion.button>
+      </div>
+    </motion.section>
+  );
+};
+
 function VibeEngine() {
   const [isBooting, setIsBooting] = useState(true);
   const [form, setForm] = useState({
@@ -427,6 +533,7 @@ function VibeEngine() {
   const [insight, setInsight] = useState(null);
   const [messageIndex, setMessageIndex] = useState(0);
   const [view, setView] = useState('explore');
+  const [selectedDestId, setSelectedDestId] = useState(null);
   const [planStep, setPlanStep] = useState(0);
   const [planDir, setPlanDir] = useState(1);
 
@@ -523,43 +630,40 @@ function VibeEngine() {
   };
 
   const renderContent = () => {
+    if (view === 'destination' && selectedDestId) return (
+      <DestinationDetail
+        destId={selectedDestId}
+        onBack={() => setView('explore')}
+        onPlan={() => {
+          updateForm('destination', selectedDestId);
+          setPlanStep(0);
+          setView('plan');
+        }}
+      />
+    );
     if (view === 'explore') return (
       <section className="space-y-20">
         <div className="text-center md:text-left">
           <h2 className="text-5xl font-black italic uppercase leading-[0.9] mb-4">Explore <span className="text-teal-500">Coordinates</span></h2>
-          <p className="text-sm opacity-60">Select your destination and arrival nodal point for reasoning.</p>
+          <p className="text-sm opacity-60">Choose a destination to see what's waiting for you.</p>
         </div>
-        
+
         <div className="space-y-12">
-          <div className="flex items-center space-x-4"><h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">01. Destination Selection</h3><div className="h-px flex-1 bg-slate-200 dark:bg-white/10" /></div>
-          <LocationGrid selected={form.destination} onSelect={(id) => updateForm('destination', id)} />
-        </div>
-
-        <ArrivalStrip selected={form.arrivalDate} onSelect={(date) => updateForm('arrivalDate', date)} />
-
-        <div className="flex justify-center pt-10 pb-20">
-           <motion.button 
-             whileHover={{ scale: 1.02 }}
-             whileTap={{ scale: 0.98 }}
-             onClick={() => { setPlanStep(0); setView('plan'); }}
-             disabled={!form.destination || !form.arrivalDate}
-             className="relative group px-24 py-10 rounded-[3rem] bg-white/20 dark:bg-white/5 backdrop-blur-3xl border-2 border-slate-900/10 dark:border-white/10 text-slate-900 dark:text-white font-black text-3xl uppercase italic tracking-tighter shadow-2xl transition-all flex items-center space-x-6 disabled:opacity-20 disabled:cursor-not-allowed group"
-           >
-             <div className="absolute inset-0 rounded-[3rem] border-b-4 border-teal-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-             <span className="relative z-10">Configure Vibe</span>
-             <div className="relative z-10 p-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 transform group-hover:rotate-12 transition-transform">
-                <ArrowRight className="w-8 h-8" />
-             </div>
-           </motion.button>
+          <div className="flex items-center space-x-4"><h3 className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">01. Destination</h3><div className="h-px flex-1 bg-slate-200 dark:bg-white/10" /></div>
+          <LocationGrid
+            selected={form.destination}
+            onSelect={(id) => { setSelectedDestId(id); setView('destination'); }}
+          />
         </div>
       </section>
     );
     if (view === 'plan') {
       const STEPS = [
-        { num: '01', label: 'Travel Persona' },
-        { num: '02', label: 'Energy Level' },
-        { num: '03', label: 'Budget' },
-        { num: '04', label: 'Trip Mode' },
+        { num: '01', label: 'Arrival Date' },
+        { num: '02', label: 'Travel Persona' },
+        { num: '03', label: 'Energy Level' },
+        { num: '04', label: 'Budget' },
+        { num: '05', label: 'Trip Mode' },
       ];
       const isLast = planStep === STEPS.length - 1;
       const stepVariants = {
@@ -572,7 +676,18 @@ function VibeEngine() {
         if (planStep === 0) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">01 — Travel Persona</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">01 — Arrival Date</p>
+              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">When are you <span className="text-teal-500">arriving</span> in {form.destination}?</h2>
+            </div>
+            <div className="pt-4">
+              <ArrivalStrip selected={form.arrivalDate} onSelect={(date) => updateForm('arrivalDate', date)} />
+            </div>
+          </div>
+        );
+        if (planStep === 1) return (
+          <div className="space-y-10">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">02 — Travel Persona</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Who are you <span className="text-teal-500">travelling as?</span></h2>
             </div>
             <div className="grid grid-cols-2 gap-4 pt-4">
@@ -580,10 +695,10 @@ function VibeEngine() {
             </div>
           </div>
         );
-        if (planStep === 1) return (
+        if (planStep === 2) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">02 — Energy Level</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">03 — Energy Level</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">How <span className="text-teal-500">intense</span> should this day be?</h2>
             </div>
             <div className="pt-4 space-y-10">
@@ -613,10 +728,10 @@ function VibeEngine() {
             </div>
           </div>
         );
-        if (planStep === 2) return (
+        if (planStep === 3) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">03 — Budget</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">04 — Budget</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">What's your <span className="text-teal-500">daily spend</span> comfort zone?</h2>
             </div>
             <div className="grid grid-cols-3 gap-4 pt-4">
@@ -645,10 +760,10 @@ function VibeEngine() {
             </div>
           </div>
         );
-        if (planStep === 3) return (
+        if (planStep === 4) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">04 — Trip Mode</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">05 — Trip Mode</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Day or <span className="text-teal-500">night</span> first?</h2>
             </div>
             <div className="pt-4 space-y-6">
@@ -698,7 +813,7 @@ function VibeEngine() {
                 />
               ))}
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-30">{STEPS[planStep].num} / 04</span>
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-30">{STEPS[planStep].num} / 05</span>
           </div>
 
           {/* Step content */}
