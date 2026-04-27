@@ -217,11 +217,18 @@ const CATEGORY_IMAGES = {
   Sightseeing: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&q=80&w=800',
 };
 
-const PERSONA_CONTEXT = {
-  Solo:   'solo traveller seeking freedom, discovery, and authentic local experiences',
-  Couple: 'couple looking for romantic, scenic, and shared memorable moments',
-  Foodie: 'food-focused group wanting to explore culture through local cuisine and markets',
-  Nomad:  'digital nomad balancing productive work sessions with efficient sightseeing',
+const GROUP_CONTEXT = {
+  Solo:     'travelling solo — recommend activities that are comfortable and rewarding alone, note where solo travellers are especially welcome',
+  Friends:  'travelling with friends — activities that work for a small group with flexible plans',
+  Couple:   'travelling as a couple — lean toward romantic, scenic, and shared experiences',
+  Flexible: 'currently alone but open to joining others — solo-friendly activities that could easily include a +1',
+};
+
+const DIETARY_CONTEXT = {
+  None:        'no dietary restrictions',
+  Vegetarian:  'vegetarian — recommend places with strong veggie options, flag any meat-heavy spots',
+  Vegan:       'vegan — only recommend vegan-friendly venues, avoid dairy and eggs',
+  Halal:       'halal — only recommend halal-certified or pork-free venues',
 };
 
 const BUDGET_CONTEXT = {
@@ -246,18 +253,20 @@ export const DESTINATION_AREAS = {
 
 export const getDestinationAreas = (destination) => DESTINATION_AREAS[destination] || [];
 
-const buildPrompt = ({ destination, persona, budget, energy, noctourism, area }) => `
+const buildPrompt = ({ destination, interests, groupContext, dietary, budget, energy, noctourism, area }) => `
 You are an expert Southeast Asia travel guide. Generate a personalised one-day itinerary for ${destination}, Thailand.
 
 Traveller profile:
-- Type: ${PERSONA_CONTEXT[persona] || persona}
+- Group setup: ${GROUP_CONTEXT[groupContext] || groupContext || 'solo traveller'}
+- Interests: ${interests && interests.length > 0 ? interests.join(', ') : 'general sightseeing'}
+- Dietary: ${DIETARY_CONTEXT[dietary] || 'no dietary restrictions'}
 - Budget: ${BUDGET_CONTEXT[budget] || budget}
 - Energy level: ${energy}/10 (${energy <= 3 ? 'slow-paced and relaxing' : energy <= 6 ? 'moderate activity' : 'high-intensity, action-packed'})
 - Mode: ${noctourism ? 'Night-forward — prioritise evening/nightlife experiences' : 'Daytime-first — focus on daytime activities'}${area ? `\n- Staying in: ${area} — prioritise activities near this area; include day trips where relevant` : ''}
 
 Return ONLY a valid JSON object with exactly this structure — no markdown, no explanation:
 {
-  "insight": "2–3 sentence strategic read of this specific day — written in second person, sharp and specific to this traveller's profile and destination. Not generic travel advice.",
+  "insight": "A warm, personal 4–5 sentence travel briefing written in second person. Open with a sharp read of what kind of day this will be given the traveller's setup and interests. Then give one specific thing to watch out for or take advantage of in ${destination} right now. Close with a sentence that speaks directly to their group context or dietary situation if relevant — make it feel like advice from a well-travelled friend, not a guidebook.",
   "Morning": [
     { "id": "m1", "title": "...", "subtitle": "specific area or neighbourhood in ${destination}", "category": "...", "duration": "X hours", "cost": "~$X–Y", "tip": "one specific practical tip" },
     { "id": "m2", ... },

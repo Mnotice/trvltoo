@@ -153,25 +153,44 @@ const WeatherTimeline = ({ hourly }) => {
   const min = Math.min(...hourly);
   const range = max - min || 1;
   const width = 800;
-  const height = 120;
+  const chartH = 100;
+  const labelH = 28;
+  const totalH = chartH + labelH;
   const padding = 40;
   const points = hourly.map((temp, i) => ({
     x: (i / (hourly.length - 1)) * (width - padding * 2) + padding,
-    y: height - padding - ((temp - min) / range) * (height - padding * 2),
-    temp, hour: i + 6
+    y: chartH - padding - ((temp - min) / range) * (chartH - padding * 2),
+    temp, hour: i + 6,
   }));
   const pathData = points.reduce((acc, p, i) => i === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`, "");
+  const timeLabels = [
+    { hour: 6, label: '6am' }, { hour: 9, label: '9am' }, { hour: 12, label: '12pm' },
+    { hour: 15, label: '3pm' }, { hour: 18, label: '6pm' }, { hour: 21, label: '9pm' },
+  ].map(({ hour, label }) => ({ label, x: points[hour - 6]?.x ?? 0 }));
 
   return (
     <div className="p-8 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-3xl overflow-hidden relative mb-10">
       <div className="flex justify-between items-end mb-6">
         <div><h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-400 mb-1">Atmosphere Pulse</h4><p className="text-3xl font-black italic tracking-tighter uppercase text-white">{hoverIndex !== null ? `${points[hoverIndex].temp}°C` : `${max}°C Peak`}</p></div>
-        <div className="text-right text-[10px] font-black uppercase tracking-widest text-white/50">{hoverIndex !== null ? `${points[hoverIndex].hour}:00` : 'Daylight Cycle'}</div>
+        <div className="text-right text-[10px] font-black uppercase tracking-widest text-white/50">{hoverIndex !== null ? `${points[hoverIndex].hour}:00` : 'Today'}</div>
       </div>
-      <div className="relative h-24 group"><svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible"><motion.path d={pathData} fill="none" stroke="url(#g)" strokeWidth="4" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1 }} />
-        <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#fbbf24" /><stop offset="50%" stopColor="#38bdf8" /><stop offset="100%" stopColor="#f97316" /></linearGradient></defs>
-        {points.map((p, i) => (<g key={i} onMouseEnter={() => setHoverIndex(i)} onMouseLeave={() => setHoverIndex(null)}><rect x={p.x - 15} y="0" width="30" height={height} fill="transparent" />{hoverIndex === i && (<><circle cx={p.x} cy={p.y} r="6" fill="#14b8a6" /><line x1={p.x} y1={p.y + 10} x2={p.x} y2={height} stroke="#14b8a6" strokeWidth="1" strokeDasharray="4 4" /></>)}</g>))}
-      </svg></div>
+      <div className="relative group">
+        <svg viewBox={`0 0 ${width} ${totalH}`} className="w-full overflow-visible" style={{ height: '7rem' }}>
+          <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#fbbf24" /><stop offset="50%" stopColor="#38bdf8" /><stop offset="100%" stopColor="#f97316" /></linearGradient></defs>
+          <motion.path d={pathData} fill="none" stroke="url(#g)" strokeWidth="4" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1 }} />
+          {/* Time labels */}
+          {timeLabels.map(({ label, x }) => (
+            <text key={label} x={x} y={totalH - 4} textAnchor="middle" fontSize="20" fontWeight="700" letterSpacing="2" fill="rgba(255,255,255,0.25)" fontFamily="sans-serif" style={{ textTransform: 'uppercase' }}>{label}</text>
+          ))}
+          {/* Hover interaction */}
+          {points.map((p, i) => (
+            <g key={i} onMouseEnter={() => setHoverIndex(i)} onMouseLeave={() => setHoverIndex(null)}>
+              <rect x={p.x - 15} y="0" width="30" height={chartH} fill="transparent" />
+              {hoverIndex === i && (<><circle cx={p.x} cy={p.y} r="6" fill="#14b8a6" /><line x1={p.x} y1={p.y + 10} x2={p.x} y2={chartH} stroke="#14b8a6" strokeWidth="1" strokeDasharray="4 4" /></>)}
+            </g>
+          ))}
+        </svg>
+      </div>
     </div>
   );
 };
@@ -848,7 +867,9 @@ function VibeEngine() {
   const [form, setForm] = useState({
     destination: 'Krabi',
     arrivalDate: new Date().toISOString().split('T')[0],
-    persona: 'Solo',
+    groupContext: 'Solo',
+    interests: [],
+    dietary: 'None',
     budget: '$$',
     energy: 5,
     noctourism: false,
@@ -916,7 +937,9 @@ function VibeEngine() {
       const tripData = {
         destination: form.destination,
         arrivalDate: form.arrivalDate,
-        persona: form.persona,
+        groupContext: form.groupContext,
+        interests: form.interests,
+        dietary: form.dietary,
         budget: form.budget,
         energy: form.energy,
         noctourism: form.noctourism,
@@ -943,7 +966,9 @@ function VibeEngine() {
       ...prev,
       destination: trip.destination,
       arrivalDate: trip.arrivalDate,
-      persona: trip.persona,
+      groupContext: trip.groupContext || 'Solo',
+      interests: trip.interests || [],
+      dietary: trip.dietary || 'None',
       budget: trip.budget,
       energy: trip.energy,
       noctourism: trip.noctourism ?? false,
@@ -1013,7 +1038,7 @@ function VibeEngine() {
 
   const buildItineraryText = () => [
     `TRVLTOO — ${form.destination} Itinerary`,
-    `Date: ${form.arrivalDate} | Persona: ${form.persona} | Budget: ${form.budget}`,
+    `Date: ${form.arrivalDate} | ${form.groupContext} | Budget: ${form.budget}`,
     '',
     ...['Morning', 'Afternoon', 'Evening'].map(slot => {
       const act = pools[slot]?.[picks[slot]];
@@ -1028,7 +1053,7 @@ function VibeEngine() {
   const exportMarkdown = () => {
     const lines = [
       `# TRVLTOO — ${form.destination} Itinerary`,
-      `**Date:** ${form.arrivalDate} | **Persona:** ${form.persona} | **Budget:** ${form.budget}`,
+      `**Date:** ${form.arrivalDate} | **${form.groupContext}** | **Budget:** ${form.budget}`,
       '',
       ...['Morning', 'Afternoon', 'Evening'].map(slot => {
         const act = pools[slot]?.[picks[slot]];
@@ -1062,7 +1087,7 @@ function VibeEngine() {
     pdf.text(form.destination.toUpperCase(), 40, 90);
     pdf.setFontSize(9);
     pdf.setTextColor(150, 150, 150);
-    pdf.text(`${form.arrivalDate}  ·  ${form.persona}  ·  ${form.budget}${form.area ? `  ·  ${form.area}` : ''}`, 40, 110);
+    pdf.text(`${form.arrivalDate}  ·  ${form.groupContext}  ·  ${form.budget}${form.area ? `  ·  ${form.area}` : ''}`, 40, 110);
     pdf.setDrawColor(255, 255, 255, 20);
     pdf.line(40, 125, 555, 125);
 
@@ -1123,7 +1148,7 @@ function VibeEngine() {
       setPicks({ Morning: 0, Afternoon: 0, Evening: 0 });
       setWeather(weatherData);
       setStatus('completed');
-      trackItineraryGenerated(sanitizedForm.destination, sanitizedForm.persona, sanitizedForm.budget);
+      trackItineraryGenerated(sanitizedForm.destination, sanitizedForm.groupContext, sanitizedForm.budget);
     } catch (err) {
       setStatus('idle');
       if (err.message === 'RATE_LIMIT') {
@@ -1166,12 +1191,14 @@ function VibeEngine() {
       const STEPS = [
         { num: '01', label: 'Arrival Date' },
         { num: '02', label: 'Your Area' },
-        { num: '03', label: 'Travel Persona' },
-        { num: '04', label: 'Energy Level' },
-        { num: '05', label: 'Budget' },
-        { num: '06', label: 'Trip Mode' },
+        { num: '03', label: 'Who You\'re With' },
+        { num: '04', label: 'Your Interests' },
+        { num: '05', label: 'Energy Level' },
+        { num: '06', label: 'Budget' },
+        { num: '07', label: 'Trip Mode' },
       ];
       const isLast = planStep === STEPS.length - 1;
+      const toggleInterest = (id) => updateForm('interests', form.interests.includes(id) ? form.interests.filter(i => i !== id) : [...form.interests, id]);
 
       const stepVariants = {
         enter: (dir) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
@@ -1209,18 +1236,82 @@ function VibeEngine() {
         if (planStep === 2) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">03 — Travel Persona</p>
-              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Who are you <span className="text-teal-500">travelling as?</span></h2>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">03 — Who You're With</p>
+              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Who are you <span className="text-teal-500">travelling with?</span></h2>
             </div>
             <div className="grid grid-cols-2 gap-4 pt-4">
-              {PERSONAS.map(p => <PersonaCard key={p.id} persona={p} isSelected={form.persona === p.id} onSelect={(id) => updateForm('persona', id)} />)}
+              {[
+                { id: 'Solo',     icon: '🧍', label: 'Solo', desc: 'Flying free, your own pace' },
+                { id: 'Friends',  icon: '👥', label: 'With Friends', desc: 'Small group, flexible plans' },
+                { id: 'Couple',   icon: '💑', label: 'Couple', desc: 'Shared moments, romantic finds' },
+                { id: 'Flexible', icon: '🤷', label: 'Flexible', desc: 'Alone now, open to company' },
+              ].map(({ id, icon, label, desc }) => (
+                <motion.button key={id} whileHover={{ y: -3 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => updateForm('groupContext', id)}
+                  className={`p-6 rounded-[2.5rem] border-2 text-left transition-all ${form.groupContext === id ? 'border-teal-500 bg-teal-500 text-white shadow-xl shadow-teal-500/20' : 'border-white/20 bg-white/10 hover:border-teal-500/50'}`}>
+                  <div className="text-2xl mb-3">{icon}</div>
+                  <div className="font-black text-base uppercase italic tracking-tighter mb-1">{label}</div>
+                  <div className={`text-[11px] leading-snug ${form.groupContext === id ? 'text-white/70' : 'opacity-50'}`}>{desc}</div>
+                </motion.button>
+              ))}
+            </div>
+            <div className="pt-4 space-y-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40">Dietary preferences</p>
+              <div className="flex flex-wrap gap-3">
+                {[
+                  { id: 'None', label: 'No restrictions' },
+                  { id: 'Vegetarian', label: 'Vegetarian' },
+                  { id: 'Vegan', label: 'Vegan' },
+                  { id: 'Halal', label: 'Halal' },
+                ].map(({ id, label }) => (
+                  <motion.button key={id} whileTap={{ scale: 0.95 }}
+                    onClick={() => updateForm('dietary', id)}
+                    className={`px-5 py-3 rounded-2xl border-2 text-[11px] font-black uppercase tracking-widest transition-all ${form.dietary === id ? 'border-teal-500 bg-teal-500 text-white' : 'border-white/20 bg-white/10 hover:border-teal-500/50'}`}>
+                    {label}
+                  </motion.button>
+                ))}
+              </div>
             </div>
           </div>
         );
         if (planStep === 3) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">04 — Energy Level</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">04 — Your Interests</p>
+              <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">What are you <span className="text-teal-500">into?</span></h2>
+            </div>
+            <div className="flex flex-wrap gap-3 pt-4">
+              {[
+                { id: 'Nature', emoji: '🌿' },
+                { id: 'Food', emoji: '🍜' },
+                { id: 'Culture', emoji: '🏛️' },
+                { id: 'Adventure', emoji: '🧗' },
+                { id: 'Nightlife', emoji: '🌙' },
+                { id: 'Wellness', emoji: '🧘' },
+                { id: 'Shopping', emoji: '🛍️' },
+                { id: 'Photography', emoji: '📷' },
+                { id: 'History', emoji: '🏺' },
+                { id: 'Water Sports', emoji: '🤿' },
+              ].map(({ id, emoji }) => {
+                const active = form.interests.includes(id);
+                return (
+                  <motion.button key={id} whileTap={{ scale: 0.93 }}
+                    onClick={() => toggleInterest(id)}
+                    className={`flex items-center gap-2 px-5 py-3 rounded-2xl border-2 text-[11px] font-black uppercase tracking-wider transition-all ${active ? 'border-teal-500 bg-teal-500 text-white' : 'border-white/20 bg-white/10 hover:border-teal-500/50'}`}>
+                    <span>{emoji}</span>{id}
+                  </motion.button>
+                );
+              })}
+            </div>
+            {form.interests.length === 0 && (
+              <p className="text-[11px] opacity-30 italic">Pick at least one — the AI uses these to shape your day.</p>
+            )}
+          </div>
+        );
+        if (planStep === 4) return (
+          <div className="space-y-10">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">05 — Energy Level</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">How <span className="text-teal-500">intense</span> should this day be?</h2>
             </div>
             <div className="pt-4 space-y-10">
@@ -1250,10 +1341,10 @@ function VibeEngine() {
             </div>
           </div>
         );
-        if (planStep === 4) return (
+        if (planStep === 5) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">05 — Budget</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">06 — Budget</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">What's your <span className="text-teal-500">daily spend</span> comfort zone?</h2>
             </div>
             <div className="grid grid-cols-3 gap-4 pt-4">
@@ -1282,10 +1373,10 @@ function VibeEngine() {
             </div>
           </div>
         );
-        if (planStep === 5) return (
+        if (planStep === 6) return (
           <div className="space-y-10">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">06 — Trip Mode</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-40 mb-3">07 — Trip Mode</p>
               <h2 className="text-4xl md:text-5xl font-black italic uppercase leading-[0.9]">Day or <span className="text-teal-500">night</span> first?</h2>
             </div>
             <div className="pt-4 space-y-6">
@@ -1335,7 +1426,7 @@ function VibeEngine() {
                 />
               ))}
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-30">{STEPS[planStep].num} / 06</span>
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-30">{STEPS[planStep].num} / 07</span>
           </div>
 
           {/* Step content */}
@@ -1450,7 +1541,7 @@ function VibeEngine() {
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {[trip.persona, trip.budget, `Energy ${trip.energy}`].map(tag => (
+                    {[trip.groupContext || trip.persona || 'Solo', trip.budget, `Energy ${trip.energy}`].map(tag => (
                       <span key={tag} className="px-3 py-1 rounded-full bg-slate-100 dark:bg-white/10 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/50">{tag}</span>
                     ))}
                   </div>
@@ -1498,12 +1589,12 @@ function VibeEngine() {
                   <p className="text-[10px] font-black uppercase tracking-[0.6em] text-teal-500 mb-3">Your Itinerary</p>
                   <h2 className="text-6xl font-black italic tracking-tighter uppercase text-white leading-[0.85]">{form.destination}</h2>
                   <div className="flex flex-wrap items-center gap-3 mt-4">
-                    {[form.arrivalDate, form.persona, form.budget].map(tag => (
+                    {[form.arrivalDate, form.groupContext, form.budget].map(tag => (
                       <span key={tag} className="px-4 py-1.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/60">{tag}</span>
                     ))}
                   </div>
                   <p className="mt-4 text-sm text-white/40 max-w-lg leading-relaxed">
-                    {ENERGY_LABELS[form.energy - 1]} · {form.persona} travel style · {form.noctourism ? 'Night-forward itinerary' : 'Daytime-first itinerary'}
+                    {ENERGY_LABELS[form.energy - 1]} · {form.groupContext} · {form.noctourism ? 'Night-forward itinerary' : 'Daytime-first itinerary'}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 mt-4">
