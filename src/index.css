@@ -19,8 +19,9 @@
   D  'Cormorant Garamond', serif     /  'Plus Jakarta Sans', sans-serif
 */
 :root {
-  --font-display: 'Barlow Condensed', sans-serif;
-  --font-body:    'Barlow', sans-serif;
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+  --font-paragraph: 'Cormorant Garamond', serif;
 }
 
 body {
@@ -31,6 +32,10 @@ body {
 h1, h2, h3, h4,
 .font-black, .font-bold {
   font-family: var(--font-display);
+}
+
+p {
+  font-family: var(--font-paragraph);
 }
 
 @layer utilities {
