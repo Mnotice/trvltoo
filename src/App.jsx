@@ -302,9 +302,21 @@ const ItineraryCard = ({ activity, isLocked, onToggleLock, slot }) => (
       <p className="text-[11px] text-white/50 font-medium uppercase tracking-wide flex items-center gap-1.5">
         <MapPin className="w-3 h-3 flex-shrink-0" />{activity.subtitle}
       </p>
-      {CATEGORY_TIPS[activity.category] && (
+      {(activity.duration || activity.cost) && (
+        <div className="flex items-center gap-3 pt-1">
+          {activity.duration && (
+            <span className="flex items-center gap-1 text-[10px] font-bold text-white/50">
+              <Clock className="w-3 h-3" />{activity.duration}
+            </span>
+          )}
+          {activity.cost && (
+            <span className="text-[10px] font-bold text-teal-400/80">{activity.cost}</span>
+          )}
+        </div>
+      )}
+      {(activity.tip || CATEGORY_TIPS[activity.category]) && (
         <p className="text-[11px] text-white/40 leading-relaxed border-t border-white/8 pt-3 mt-1">
-          {CATEGORY_TIPS[activity.category]}
+          {activity.tip || CATEGORY_TIPS[activity.category]}
         </p>
       )}
     </div>

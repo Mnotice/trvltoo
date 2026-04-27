@@ -193,6 +193,94 @@ const FEATURE_DATA = {
   }
 };
 
+const CATEGORY_IMAGES = {
+  Adventure:   'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800',
+  Culture:     'https://images.unsplash.com/photo-1528181304800-2f5402473ff1?auto=format&fit=crop&q=80&w=800',
+  Dining:      'https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&q=80&w=800',
+  Nature:      'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?auto=format&fit=crop&q=80&w=800',
+  Sports:      'https://images.unsplash.com/photo-1519046904884-53103b34b206?auto=format&fit=crop&q=80&w=800',
+  Lifestyle:   'https://images.unsplash.com/photo-1562601579-599dec504631?auto=format&fit=crop&q=80&w=800',
+  Luxury:      'https://images.unsplash.com/photo-1533107862482-0e6974b06ec4?auto=format&fit=crop&q=80&w=800',
+  Sightseeing: 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?auto=format&fit=crop&q=80&w=800',
+};
+
+const PERSONA_CONTEXT = {
+  Solo:   'solo traveller seeking freedom, discovery, and authentic local experiences',
+  Couple: 'couple looking for romantic, scenic, and shared memorable moments',
+  Foodie: 'food-focused group wanting to explore culture through local cuisine and markets',
+  Nomad:  'digital nomad balancing productive work sessions with efficient sightseeing',
+};
+
+const BUDGET_CONTEXT = {
+  '$':   'backpacker budget (under $30/day) — street food, guesthouses, free attractions',
+  '$$':  'mid-range comfort ($30–100/day) — local restaurants, 3-star hotels, paid attractions',
+  '$$$': 'premium ($100+/day) — luxury resorts, fine dining, private tours',
+};
+
+const buildPrompt = ({ destination, persona, budget, energy, noctourism }) => `
+You are an expert Southeast Asia travel guide. Generate a personalised one-day itinerary for ${destination}, Thailand.
+
+Traveller profile:
+- Type: ${PERSONA_CONTEXT[persona] || persona}
+- Budget: ${BUDGET_CONTEXT[budget] || budget}
+- Energy level: ${energy}/10 (${energy <= 3 ? 'slow-paced and relaxing' : energy <= 6 ? 'moderate activity' : 'high-intensity, action-packed'})
+- Mode: ${noctourism ? 'Night-forward — prioritise evening/nightlife experiences' : 'Daytime-first — focus on daytime activities'}
+
+Return ONLY a valid JSON object with exactly this structure — no markdown, no explanation:
+{
+  "Morning": [
+    { "id": "m1", "title": "...", "subtitle": "specific area or neighbourhood in ${destination}", "category": "...", "duration": "X hours", "cost": "~$X–Y", "tip": "one specific practical tip" },
+    { "id": "m2", ... },
+    { "id": "m3", ... }
+  ],
+  "Afternoon": [
+    { "id": "a1", ... },
+    { "id": "a2", ... },
+    { "id": "a3", ... }
+  ],
+  "Evening": [
+    { "id": "e1", ... },
+    { "id": "e2", ... },
+    { "id": "e3", ... }
+  ]
+}
+
+Rules:
+- Provide exactly 3 options per slot (Morning / Afternoon / Evening) so the user can re-roll
+- category must be one of: Adventure, Culture, Dining, Nature, Sports, Lifestyle, Luxury, Sightseeing
+- Morning = 6am–12pm activities, Afternoon = 12pm–6pm, Evening = 6pm–late
+- Use real, specific place names in ${destination} — no generic descriptions
+- Match budget strictly: $ means cheap local spots only, $$$ means upscale venues
+- Match energy: low energy = gentle walks, spas, cafés; high energy = treks, water sports, full-day tours
+- cost should be realistic USD for Thailand
+- tip should be specific and actionable (e.g. "arrive before 8am to avoid crowds", "book 2 days ahead in high season")
+`;
+
+async function generateAIItinerary(prefs) {
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+  if (!apiKey) throw new Error('No Gemini API key');
+
+  const { GoogleGenerativeAI } = await import('@google/generative-ai');
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.0-flash',
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.8 },
+  });
+
+  const result = await model.generateContent(buildPrompt(prefs));
+  const raw = result.response.text();
+  const parsed = JSON.parse(raw);
+
+  ['Morning', 'Afternoon', 'Evening'].forEach(slot => {
+    parsed[slot] = (parsed[slot] || []).map(item => ({
+      ...item,
+      image: CATEGORY_IMAGES[item.category] || CATEGORY_IMAGES.Sightseeing,
+    }));
+  });
+
+  return parsed;
+}
+
 export const fetchWeather = async (destination) => {
   try {
     const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(destination)}&count=1`);
@@ -217,54 +305,10 @@ export const fetchWeather = async (destination) => {
 };
 
 export const fetchItinerary = async (prefs) => {
-  const { destination, budget, persona, energy, noctourism } = prefs;
-  
-  // Use Curated Data if available
-  const curated = FEATURE_DATA[destination];
-  
-  const fallbackImages = [
-    'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=800&h=400',
-    'https://images.unsplash.com/photo-1582050041567-9cfdd330d545?auto=format&fit=crop&q=80&w=800&h=400'
-  ];
-
   try {
-    let url = `/api/foursquare?destination=${encodeURIComponent(destination)}`;
-    const response = await fetch(url);
-    const data = await response.json();
-    const results = data.results || [];
-
-    const pools = { Morning: [], Afternoon: [], Evening: [] };
-
-    // Blend Curated + Live
-    if (curated) {
-      ['Morning', 'Afternoon', 'Evening'].forEach(slot => {
-        pools[slot] = [...curated[slot]];
-      });
-    }
-
-    results.forEach((place, index) => {
-      const item = {
-        id: place.fsq_id || `live_${index}`,
-        title: place.name || 'Unknown Place',
-        subtitle: place.location?.formatted_address || 'Address Hidden',
-        category: place.categories?.[0]?.name || 'Activity',
-        image: fallbackImages[index % fallbackImages.length]
-      };
-
-      const cat = item.category.toLowerCase();
-      if (cat.includes('cafe') || cat.includes('breakfast')) pools.Morning.push(item);
-      else if (cat.includes('bar') || cat.includes('night') || cat.includes('dinner')) pools.Evening.push(item);
-      else pools.Afternoon.push(item);
-    });
-
-    // Final mapping and shuffling
-    return {
-      Morning: pools.Morning.slice(0, 5),
-      Afternoon: pools.Afternoon.slice(0, 5),
-      Evening: pools.Evening.slice(0, 5)
-    };
-
-  } catch (error) {
-    return curated || null;
+    return await generateAIItinerary(prefs);
+  } catch (err) {
+    console.warn('AI generation failed, using curated data:', err.message);
+    return FEATURE_DATA[prefs.destination] || null;
   }
 };

@@ -1,0 +1,11 @@
+a Route, 
+a Controller,
+a Model,
+a Migration,
+a View,
+a Request,
+Helper files,
+Jobs and Queues,
+Middleware,
+Roles and Permissions, 
+a Service Provider
