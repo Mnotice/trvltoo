@@ -526,6 +526,7 @@ function VibeEngine() {
     nightIntensity: 5
   });
   const [status, setStatus] = useState('idle');
+  const [genError, setGenError] = useState(null);
   const [pools, setPools] = useState({ Morning: [], Afternoon: [], Evening: [] });
   const [picks, setPicks] = useState({ Morning: 0, Afternoon: 0, Evening: 0 });
   const [locked, setLocked] = useState(new Set());
@@ -609,6 +610,7 @@ function VibeEngine() {
 
   const handleSubmit = async (e) => {
     e?.preventDefault();
+    setGenError(null);
     setStatus('processing');
     setLocked(new Set());
     try {
@@ -624,8 +626,12 @@ function VibeEngine() {
       setWeather(weatherData);
       setStatus('completed');
     } catch (err) {
-      console.error("Vibe Engine Error:", err);
       setStatus('idle');
+      if (err.message === 'RATE_LIMIT') {
+        setGenError(err.friendly);
+      } else {
+        console.error('Vibe Engine Error:', err);
+      }
     }
   };
 
@@ -832,6 +838,18 @@ function VibeEngine() {
               </motion.div>
             </AnimatePresence>
           </div>
+
+          {/* Rate limit error */}
+          <AnimatePresence>
+            {genError && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+                className="px-6 py-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-sm font-bold text-center"
+              >
+                {genError}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Navigation */}
           <div className="flex items-center justify-between">

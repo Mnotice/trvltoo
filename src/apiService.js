@@ -271,9 +271,41 @@ Rules:
 - insight must reference the traveller type and destination — make it feel like a personal briefing
 `;
 
+const RATE_LIMIT = { dailyMax: 20, cooldownMs: 15_000 };
+
+function checkRateLimit() {
+  const now = Date.now();
+  const today = new Date().toDateString();
+  const stored = JSON.parse(localStorage.getItem('trvltoo_rl') || '{}');
+
+  if (stored.date !== today) {
+    stored.date = today;
+    stored.count = 0;
+  }
+
+  if (stored.count >= RATE_LIMIT.dailyMax) {
+    throw Object.assign(new Error('RATE_LIMIT'), {
+      friendly: `Daily limit of ${RATE_LIMIT.dailyMax} generations reached. Come back tomorrow.`,
+    });
+  }
+
+  if (stored.lastMs && now - stored.lastMs < RATE_LIMIT.cooldownMs) {
+    const secs = Math.ceil((RATE_LIMIT.cooldownMs - (now - stored.lastMs)) / 1000);
+    throw Object.assign(new Error('RATE_LIMIT'), {
+      friendly: `Please wait ${secs}s before generating again.`,
+    });
+  }
+
+  stored.count += 1;
+  stored.lastMs = now;
+  localStorage.setItem('trvltoo_rl', JSON.stringify(stored));
+}
+
 async function generateAIItinerary(prefs) {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
   if (!apiKey) throw new Error('No Gemini API key');
+
+  checkRateLimit();
 
   const { GoogleGenerativeAI } = await import('@google/generative-ai');
   const genAI = new GoogleGenerativeAI(apiKey);
