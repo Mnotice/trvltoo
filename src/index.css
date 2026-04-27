@@ -10,9 +10,27 @@
   --color-teal-700: #0f766e;
 }
 
+/*
+  FONT OPTIONS — swap the two variables below to experiment:
+
+  A  'Barlow Condensed', sans-serif  /  'Barlow', sans-serif
+  B  'Syne', sans-serif              /  'DM Sans', sans-serif
+  C  'Space Grotesk', sans-serif     /  'Space Mono', monospace
+  D  'Cormorant Garamond', serif     /  'Plus Jakarta Sans', sans-serif
+*/
+:root {
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body:    'Barlow', sans-serif;
+}
+
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-body);
   margin: 0;
+}
+
+h1, h2, h3, h4,
+.font-black, .font-bold {
+  font-family: var(--font-display);
 }
 
 @layer utilities {
