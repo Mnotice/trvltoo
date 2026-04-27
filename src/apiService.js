@@ -212,9 +212,9 @@ const PERSONA_CONTEXT = {
 };
 
 const BUDGET_CONTEXT = {
-  '$':   'budget traveller ($50–100/day) — street food, guesthouses, free attractions',
-  '$$':  'mid-range comfort ($100–250/day) — local restaurants, 3-4 star hotels, paid attractions',
-  '$$$': 'premium ($250+/day) — luxury resorts, fine dining, private tours',
+  '$':   'backpacker budget (under $30/day) — street food, guesthouses, free attractions',
+  '$$':  'mid-range comfort ($30–100/day) — local restaurants, 3-star hotels, paid attractions',
+  '$$$': 'premium ($100+/day) — luxury resorts, fine dining, private tours',
 };
 
 const buildPrompt = ({ destination, persona, budget, energy, noctourism }) => `

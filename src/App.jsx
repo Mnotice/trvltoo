@@ -621,9 +621,9 @@ function VibeEngine() {
             </div>
             <div className="grid grid-cols-3 gap-4 pt-4">
               {[
-                { tier: '$', label: 'Backpacker', range: '$50–100/day', desc: 'Street food & guesthouses' },
-                { tier: '$$', label: 'Comfort', range: '$100–250/day', desc: 'Mid-range hotels & restaurants' },
-                { tier: '$$$', label: 'Premium', range: '$250+/day', desc: 'Resorts & fine dining' },
+                { tier: '$', label: 'Backpacker', range: 'Under $30/day', desc: 'Street food & hostels' },
+                { tier: '$$', label: 'Comfort', range: '$30–100/day', desc: 'Mid-range hotels & restaurants' },
+                { tier: '$$$', label: 'Premium', range: '$100+/day', desc: 'Resorts & fine dining' },
               ].map(({ tier, label, range, desc }) => (
                 <motion.button
                   key={tier}
@@ -637,9 +637,9 @@ function VibeEngine() {
                   }`}
                 >
                   <div className="text-2xl font-black italic tracking-tighter mb-1">{tier}</div>
-                  <div className={`text-[10px] font-black uppercase tracking-widest mb-2 ${form.budget === tier ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</div>
-                  <div className={`text-xs font-bold ${form.budget === tier ? 'text-white/90' : 'text-slate-700 dark:text-white/70'}`}>{range}</div>
-                  <div className={`text-[10px] mt-1 leading-tight ${form.budget === tier ? 'text-white/70' : 'text-slate-400 dark:text-slate-500'}`}>{desc}</div>
+                  <div className={`text-[10px] font-black uppercase tracking-widest mb-2 ${form.budget === tier ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>{label}</div>
+                  <div className={`text-sm font-bold ${form.budget === tier ? 'text-white' : 'text-slate-800 dark:text-white'}`}>{range}</div>
+                  <div className={`text-[11px] mt-1 leading-tight ${form.budget === tier ? 'text-white/80' : 'text-slate-500 dark:text-slate-300'}`}>{desc}</div>
                 </motion.button>
               ))}
             </div>
