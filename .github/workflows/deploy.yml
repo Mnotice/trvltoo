@@ -49,7 +49,7 @@ jobs:
         id: deployment
 
       - name: Install functions dependencies
-        run: npm ci
+        run: npm install
         working-directory: functions
 
       - name: Deploy Firebase Hosting + Functions
