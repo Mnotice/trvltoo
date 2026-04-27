@@ -52,8 +52,11 @@ jobs:
         id: deployment
 
       - name: Install functions dependencies
+        if: ${{ secrets.FIREBASE_TOKEN != '' }}
         run: npm install
         working-directory: functions
 
       - name: Deploy Firebase Hosting + Functions
+        if: ${{ secrets.FIREBASE_TOKEN != '' }}
+        continue-on-error: true
         run: npx firebase-tools deploy --only hosting,functions --project trvltoo-4c81f --token "${{ secrets.FIREBASE_TOKEN }}"
