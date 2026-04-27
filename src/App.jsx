@@ -424,6 +424,7 @@ function VibeEngine() {
   const [picks, setPicks] = useState({ Morning: 0, Afternoon: 0, Evening: 0 });
   const [locked, setLocked] = useState(new Set());
   const [weather, setWeather] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [messageIndex, setMessageIndex] = useState(0);
   const [view, setView] = useState('explore');
   const [planStep, setPlanStep] = useState(0);
@@ -510,7 +511,8 @@ function VibeEngine() {
         fetchWeather(sanitizedForm.destination),
       ]);
       const safeItinerary = itinerary || { Morning: [], Afternoon: [], Evening: [] };
-      setPools(safeItinerary);
+      setPools({ Morning: safeItinerary.Morning || [], Afternoon: safeItinerary.Afternoon || [], Evening: safeItinerary.Evening || [] });
+      setInsight(safeItinerary.insight || null);
       setPicks({ Morning: 0, Afternoon: 0, Evening: 0 });
       setWeather(weatherData);
       setStatus('completed');
@@ -619,9 +621,9 @@ function VibeEngine() {
             </div>
             <div className="grid grid-cols-3 gap-4 pt-4">
               {[
-                { tier: '$', label: 'Backpacker', range: 'Under $30/day', desc: 'Street food & hostels' },
-                { tier: '$$', label: 'Comfort', range: '$30–100/day', desc: 'Mid-range hotels & restaurants' },
-                { tier: '$$$', label: 'Premium', range: '$100+/day', desc: 'Resorts & fine dining' },
+                { tier: '$', label: 'Backpacker', range: '$50–100/day', desc: 'Street food & guesthouses' },
+                { tier: '$$', label: 'Comfort', range: '$100–250/day', desc: 'Mid-range hotels & restaurants' },
+                { tier: '$$$', label: 'Premium', range: '$250+/day', desc: 'Resorts & fine dining' },
               ].map(({ tier, label, range, desc }) => (
                 <motion.button
                   key={tier}
@@ -810,6 +812,18 @@ function VibeEngine() {
                   </button>
                 </div>
               </header>
+
+              {/* AI Insight */}
+              {insight && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-8 rounded-[2.5rem] bg-teal-500/10 border border-teal-500/20"
+                >
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-400 mb-3">Agent Insight</p>
+                  <p className="text-white/80 text-base leading-relaxed italic">{insight}</p>
+                </motion.div>
+              )}
 
               {/* Weather */}
               {weather && (

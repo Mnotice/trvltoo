@@ -212,9 +212,9 @@ const PERSONA_CONTEXT = {
 };
 
 const BUDGET_CONTEXT = {
-  '$':   'backpacker budget (under $30/day) — street food, guesthouses, free attractions',
-  '$$':  'mid-range comfort ($30–100/day) — local restaurants, 3-star hotels, paid attractions',
-  '$$$': 'premium ($100+/day) — luxury resorts, fine dining, private tours',
+  '$':   'budget traveller ($50–100/day) — street food, guesthouses, free attractions',
+  '$$':  'mid-range comfort ($100–250/day) — local restaurants, 3-4 star hotels, paid attractions',
+  '$$$': 'premium ($250+/day) — luxury resorts, fine dining, private tours',
 };
 
 const buildPrompt = ({ destination, persona, budget, energy, noctourism }) => `
@@ -228,6 +228,7 @@ Traveller profile:
 
 Return ONLY a valid JSON object with exactly this structure — no markdown, no explanation:
 {
+  "insight": "2–3 sentence strategic read of this specific day — written in second person, sharp and specific to this traveller's profile and destination. Not generic travel advice.",
   "Morning": [
     { "id": "m1", "title": "...", "subtitle": "specific area or neighbourhood in ${destination}", "category": "...", "duration": "X hours", "cost": "~$X–Y", "tip": "one specific practical tip" },
     { "id": "m2", ... },
@@ -254,6 +255,7 @@ Rules:
 - Match energy: low energy = gentle walks, spas, cafés; high energy = treks, water sports, full-day tours
 - cost should be realistic USD for Thailand
 - tip should be specific and actionable (e.g. "arrive before 8am to avoid crowds", "book 2 days ahead in high season")
+- insight must reference the traveller type and destination — make it feel like a personal briefing
 `;
 
 async function generateAIItinerary(prefs) {
