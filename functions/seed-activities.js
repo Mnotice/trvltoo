@@ -74,10 +74,11 @@ const VALID_COST_TIERS = ['$', '$$', '$$$'];
 // ── Prompt ────────────────────────────────────────────────────────────────────
 function buildSeedPrompt(destination) {
   return `
-Search the web for real, currently popular tourist activities and dining experiences in ${destination}, Thailand.
-Find a broad mix — morning sights, afternoon adventures, evening dining and nightlife.
+You are an expert Southeast Asia travel guide with deep knowledge of ${destination}, Thailand.
+Generate a comprehensive list of real, specific tourist activities and dining experiences there.
+Cover a broad mix — morning sights, afternoon adventures, evening dining and nightlife.
 
-Return ONLY a JSON array of exactly 40 items. No markdown, no explanation, no trailing text — just the raw JSON array.
+Return ONLY a JSON array of exactly 30 items. No markdown, no explanation, no trailing text — just the raw JSON array.
 
 Each item must use this exact schema:
 {
@@ -103,6 +104,8 @@ Rules:
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function extractJson(text) {
+  // Try direct parse first (responseMimeType: application/json), then fallback to regex
+  try { return JSON.parse(text); } catch {}
   const match = text.match(/\[[\s\S]*\]/);
   if (!match) throw new Error('No JSON array found in response');
   return JSON.parse(match[0]);
@@ -132,8 +135,7 @@ async function seedDestination(destination) {
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-2.0-flash',
-    tools: [{ googleSearch: {} }],
-    generationConfig: { temperature: 0.4, maxOutputTokens: 8000 },
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.4, maxOutputTokens: 6000 },
   });
 
   let items;
@@ -171,8 +173,12 @@ async function main() {
 
   for (const dest of DESTINATIONS) {
     await seedDestination(dest);
-    // Respect Gemini rate limits between destinations
-    await sleep(4000);
+    // 65s gap keeps us well under the free tier's 15 RPM limit
+    if (dest !== DESTINATIONS[DESTINATIONS.length - 1]) {
+      process.stdout.write('   ⏳  Waiting 65s for rate limit...');
+      await sleep(65000);
+      process.stdout.write(' done\n');
+    }
   }
 
   console.log('\n✅  All destinations seeded.\n');
