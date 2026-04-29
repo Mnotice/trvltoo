@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, LogIn, Loader2, CalendarDays, MapPin, Trash2 } from 'lucide-react';
+import { Plus, LogIn, Loader2, CalendarDays, MapPin, Trash2, Crown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTrips } from '../hooks/useTrips';
+import { usePlan, FREE_TRIP_LIMIT } from '../hooks/usePlan';
+import ProGate from '../components/ProGate';
 import LandingNav from '../components/Landing/LandingNav';
 
 function formatDateRange(start, end) {
@@ -17,6 +20,15 @@ export default function Trips() {
   const navigate = useNavigate();
   const { user, loading: authLoading, signInWithGoogle } = useAuth();
   const { trips, loading: tripsLoading, deleteTrip } = useTrips(user?.uid);
+  const { isPro } = usePlan(user?.uid);
+  const [showGate, setShowGate] = useState(false);
+
+  const atLimit = !isPro && trips.length >= FREE_TRIP_LIMIT;
+
+  function handleNewTrip() {
+    if (atLimit) { setShowGate(true); return; }
+    navigate('/trips/new');
+  }
 
   if (authLoading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -26,6 +38,7 @@ export default function Trips() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
+      {showGate && <ProGate onClose={() => setShowGate(false)} />}
       <LandingNav />
 
       <main className="max-w-6xl mx-auto px-6 pt-28 pb-20 space-y-10">
@@ -35,12 +48,27 @@ export default function Trips() {
             <h1 className="text-4xl font-black italic uppercase tracking-tighter text-white leading-none">
               {user ? `${trips.length} trip${trips.length !== 1 ? 's' : ''} planned` : 'Your trips'}
             </h1>
+            {user && !isPro && (
+              <p className="text-[11px] text-white/25 font-medium">
+                {trips.length}/{FREE_TRIP_LIMIT} free trips used
+                {atLimit && <> · <span className="text-amber-400 cursor-pointer hover:text-amber-300" onClick={() => navigate('/upgrade')}>Upgrade for unlimited</span></>}
+              </p>
+            )}
+            {user && isPro && (
+              <p className="text-[11px] text-amber-400/70 font-black uppercase tracking-wider flex items-center gap-1">
+                <Crown className="w-3 h-3" /> Pro
+              </p>
+            )}
           </div>
           {user && (
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              onClick={() => navigate('/trips/new')}
-              className="flex items-center gap-2 px-6 py-3 rounded-full bg-teal-500 text-white font-black text-[11px] uppercase tracking-[0.2em] shadow-lg shadow-teal-500/20 hover:bg-teal-400 transition-colors">
-              <Plus className="w-4 h-4" /> New Trip
+              onClick={handleNewTrip}
+              className={`flex items-center gap-2 px-6 py-3 rounded-full font-black text-[11px] uppercase tracking-[0.2em] shadow-lg transition-colors ${
+                atLimit
+                  ? 'bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-400'
+                  : 'bg-teal-500 text-white shadow-teal-500/20 hover:bg-teal-400'
+              }`}>
+              {atLimit ? <><Crown className="w-4 h-4" /> Upgrade for more</> : <><Plus className="w-4 h-4" /> New Trip</>}
             </motion.button>
           )}
         </div>

@@ -46,14 +46,10 @@ export default function LandingNav() {
           <Link to="/plan" className="px-5 py-2.5 text-[11px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-colors">
             Day Planner
           </Link>
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => navigate('/plan')}
-            className="px-5 py-2.5 rounded-full bg-teal-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-teal-400 transition-colors shadow-lg shadow-teal-500/20"
-          >
-            Start Planning
-          </motion.button>
+          <Link to="/upgrade"
+            className="px-5 py-2.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[11px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg shadow-amber-500/20">
+            Upgrade
+          </Link>
         </div>
 
         {/* Mobile menu button */}
@@ -96,12 +92,10 @@ export default function LandingNav() {
               <Link to="/plan" onClick={() => setMenuOpen(false)} className="text-[12px] font-black uppercase tracking-widest text-white/60 hover:text-white transition-colors py-2">
                 Day Planner
               </Link>
-              <button
-                onClick={() => { setMenuOpen(false); navigate('/plan'); }}
-                className="mt-2 py-3 rounded-full bg-teal-500 text-white text-[12px] font-black uppercase tracking-widest hover:bg-teal-400 transition-colors"
-              >
-                Start Planning
-              </button>
+              <Link to="/upgrade" onClick={() => setMenuOpen(false)}
+                className="mt-2 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[12px] font-black uppercase tracking-widest text-center hover:opacity-90 transition-opacity">
+                Upgrade to Pro
+              </Link>
             </nav>
           </motion.div>
         )}

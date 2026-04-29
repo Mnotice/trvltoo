@@ -5,7 +5,7 @@ export default function Header({ currentView, isDark, onToggleTheme, setView, us
   return (
     <header className="fixed top-0 left-0 right-0 z-40 px-6 py-4 md:px-12 backdrop-blur-xl border-b border-white/10 flex items-center justify-between">
       <div className="flex items-center space-x-6">
-        <Link to="/" className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white/70 transition-colors">
+        <Link to="/" className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-white/15 text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:border-white/30 transition-all">
           <ArrowLeft className="w-3.5 h-3.5" /> Home
         </Link>
         <div

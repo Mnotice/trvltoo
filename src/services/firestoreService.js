@@ -11,7 +11,7 @@ export async function upsertUser(uid, profile) {
   const ref = doc(db, 'users', uid);
   const snap = await getDoc(ref);
   if (!snap.exists()) {
-    await setDoc(ref, { ...profile, createdAt: serverTimestamp() });
+    await setDoc(ref, { ...profile, plan: 'free', createdAt: serverTimestamp() });
   } else {
     await updateDoc(ref, profile);
   }

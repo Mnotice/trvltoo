@@ -13,6 +13,7 @@ import SharedTrip from './pages/SharedTrip.jsx'
 import MapPage from './pages/MapPage.jsx'
 import InvitePage from './pages/InvitePage.jsx'
 import Destinations from './pages/Destinations.jsx'
+import Upgrade from './pages/Upgrade.jsx'
 import InstallPrompt from './components/InstallPrompt.jsx'
 
 if (import.meta.env.VITE_SENTRY_DSN) {
@@ -38,6 +39,7 @@ createRoot(document.getElementById('root')).render(
           <Route path="/map" element={<MapPage />} />
           <Route path="/invite/:token" element={<InvitePage />} />
           <Route path="/destinations" element={<Destinations />} />
+          <Route path="/upgrade" element={<Upgrade />} />
         </Routes>
         <InstallPrompt />
       </BrowserRouter>
