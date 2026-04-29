@@ -1,164 +1,252 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { MapPin, Clock, ArrowRight, Compass } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Compass, MapPin, CalendarDays, DollarSign,
+  ChevronDown, ChevronUp, Clock, Lightbulb, Sparkles,
+} from 'lucide-react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { THAILAND_PLACEHOLDERS } from '../apiService';
 
-const SLOT_TIMES = {
-  Morning: '07:00 – 10:00',
-  Afternoon: '13:00 – 16:00',
-  Evening: '19:00 – 22:00',
+const CATEGORY_EMOJI = {
+  food: '🍜', attraction: '🏛️', nature: '🌿', hotel: '🛏️',
+  shopping: '🛍️', nightlife: '🌙', experience: '✨', other: '📍',
 };
+const COST_COLOR = { '$': 'text-emerald-400', '$$': 'text-amber-400', '$$$': 'text-rose-400' };
 
-const SLOT_COLORS = {
-  Morning: 'text-amber-400',
-  Afternoon: 'text-sky-400',
-  Evening: 'text-indigo-400',
-};
+function fromKey(k) { return new Date(k + 'T00:00:00'); }
+function formatDate(k) {
+  return fromKey(k).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
 
-const ReadOnlyCard = ({ activity, slot, index }) => {
-  if (!activity) return (
-    <div className="h-48 rounded-[2rem] border-2 border-dashed border-white/10 flex items-center justify-center">
-      <span className="text-[10px] font-black uppercase tracking-widest text-white/20">No activity</span>
-    </div>
+function ActivityRow({ act, index }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className="border-l-2 border-white/10 pl-5 space-y-1 hover:border-teal-500/30 transition-colors"
+    >
+      <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={() => setOpen(o => !o)}>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span className="text-[11px] font-black text-teal-400/70 w-12 shrink-0">{act.time}</span>
+          <span className="text-sm font-black italic uppercase tracking-tight text-white truncate">
+            {CATEGORY_EMOJI[act.category] ?? '📍'} {act.title}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {act.cost && <span className={`text-[10px] font-black ${COST_COLOR[act.cost] ?? 'text-white/30'}`}>{act.cost}</span>}
+          {open ? <ChevronUp className="w-3.5 h-3.5 text-white/30" /> : <ChevronDown className="w-3.5 h-3.5 text-white/30" />}
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-2 pb-1 space-y-2">
+              {act.description && <p className="text-[12px] text-white/50 leading-relaxed">{act.description}</p>}
+              <div className="flex flex-wrap gap-3 text-[11px] text-white/35">
+                {act.duration  && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{act.duration}</span>}
+                {act.transport && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{act.transport}</span>}
+              </div>
+              {act.tip && (
+                <div className="flex items-start gap-2 mt-1 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/15">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-amber-300/80">{act.tip}</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
+}
+
+function DayCard({ day, index }) {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-      className="relative rounded-[2rem] overflow-hidden border border-white/10 bg-white/5"
+      transition={{ delay: index * 0.08 }}
+      className="rounded-[2rem] bg-white/5 border border-white/10 overflow-hidden"
     >
-      <div className="h-48 overflow-hidden relative">
-        <img
-          src={activity.image || THAILAND_PLACEHOLDERS[0]}
-          alt={activity.title}
-          onError={e => { e.target.src = THAILAND_PLACEHOLDERS[index % THAILAND_PLACEHOLDERS.length]; }}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-        <div className="absolute bottom-3 left-4 px-3 py-1 rounded-full bg-black/50 backdrop-blur-sm border border-white/10">
-          <span className="text-[9px] font-black uppercase tracking-widest text-white/80">{SLOT_TIMES[slot]}</span>
-        </div>
-      </div>
-      <div className="p-5 space-y-1.5">
-        <span className="text-[9px] font-black uppercase tracking-widest text-teal-400">{activity.category}</span>
-        <h4 className="text-lg font-black italic tracking-tighter uppercase text-white leading-tight">{activity.title}</h4>
-        <p className="text-[11px] text-white/50 flex items-center gap-1.5">
-          <MapPin className="w-3 h-3 flex-shrink-0" />{activity.subtitle}
-        </p>
-        {(activity.duration || activity.cost) && (
-          <div className="flex items-center gap-3 pt-1">
-            {activity.duration && <span className="flex items-center gap-1 text-[10px] text-white/40"><Clock className="w-3 h-3" />{activity.duration}</span>}
-            {activity.cost && <span className="text-[10px] text-teal-400/80">{activity.cost}</span>}
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        className="w-full flex items-center justify-between px-6 py-5 hover:bg-white/5 transition-colors"
+      >
+        <div className="flex items-center gap-4 text-left">
+          <div className="w-10 h-10 rounded-2xl bg-teal-500 flex items-center justify-center shrink-0">
+            <span className="text-white font-black text-sm">{day.day}</span>
           </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-teal-400/70">{formatDate(day.date)}</p>
+            <p className="text-base font-black italic uppercase tracking-tight text-white leading-tight">{day.title}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {day.dayBudget && (
+            <span className="text-[11px] font-black text-white/30 flex items-center gap-1">
+              <DollarSign className="w-3 h-3" />~${day.dayBudget}
+            </span>
+          )}
+          {collapsed ? <ChevronDown className="w-4 h-4 text-white/30" /> : <ChevronUp className="w-4 h-4 text-white/30" />}
+        </div>
+      </button>
+
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="overflow-hidden">
+            <div className="px-6 pb-6 space-y-3">
+              {day.daySummary && (
+                <p className="text-[12px] text-white/40 italic border-l-2 border-teal-500/30 pl-3">{day.daySummary}</p>
+              )}
+              <div className="space-y-3 pt-1">
+                {(day.activities ?? []).map((act, i) => (
+                  <ActivityRow key={i} act={act} index={i} />
+                ))}
+              </div>
+            </div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </motion.div>
   );
-};
+}
 
 export default function SharedTrip() {
   const { id } = useParams();
-  const [trip, setTrip] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [trip,     setTrip]     = useState(null);
+  const [loading,  setLoading]  = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (!id) { setNotFound(true); setLoading(false); return; }
-    getDoc(doc(db, 'trips', id)).then(snap => {
-      if (!snap.exists()) { setNotFound(true); }
-      else { setTrip({ id: snap.id, ...snap.data() }); }
-    }).catch(() => setNotFound(true)).finally(() => setLoading(false));
+    getDoc(doc(db, 'trips', id))
+      .then(snap => {
+        if (!snap.exists() || !snap.data().isPublic) { setNotFound(true); }
+        else { setTrip({ id: snap.id, ...snap.data() }); }
+      })
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
   }, [id]);
 
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
       <motion.div animate={{ rotate: 360 }} transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}>
-        <Compass className="w-12 h-12 text-teal-500" />
+        <Compass className="w-10 h-10 text-teal-500" />
       </motion.div>
     </div>
   );
 
   if (notFound) return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-8 px-6 text-center">
-      <h1 className="text-4xl font-black italic uppercase text-white/40 tracking-tighter">Trip not found</h1>
-      <Link to="/" className="px-10 py-4 rounded-full bg-teal-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-teal-400 transition-all">
+      <p className="text-5xl">🗺️</p>
+      <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white/40">Trip not found</h1>
+      <p className="text-sm text-white/25 max-w-xs">This link may have expired or the trip is no longer public.</p>
+      <Link to="/" className="px-8 py-3 rounded-full bg-teal-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-teal-400 transition-colors">
         Plan Your Own Trip
       </Link>
     </div>
   );
 
-  const slots = trip.slots || {};
-  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const { name, destination, startDate, endDate, itinerary } = trip;
+  const nights = startDate && endDate
+    ? Math.round((new Date(endDate + 'T00:00:00') - new Date(startDate + 'T00:00:00')) / 86400000)
+    : null;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white">
-      <div className="max-w-5xl mx-auto px-6 md:px-12 py-12 space-y-10">
+      <main className="max-w-3xl mx-auto px-6 py-12 space-y-10">
 
-        {/* Header */}
-        <header className="flex items-center justify-between pt-4">
-          <Link to="/" className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100 transition-opacity">
-            <ArrowRight className="w-4 h-4 rotate-180" /> trvltoo
+        {/* Nav */}
+        <div className="flex items-center justify-between">
+          <Link to="/" className="text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white/70 transition-colors">
+            ← TRVLTOO
           </Link>
           <span className="text-[10px] font-black uppercase tracking-widest text-teal-500">Shared Itinerary</span>
-        </header>
+        </div>
 
-        {/* Title */}
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.6em] text-teal-500 mb-3">Your Itinerary</p>
-          <h1 className="text-6xl font-black italic tracking-tighter uppercase leading-[0.85]">{trip.destination}</h1>
-          <div className="flex flex-wrap items-center gap-3 mt-4">
-            {[trip.arrivalDate, trip.persona, trip.budget].map(tag => tag && (
-              <span key={tag} className="px-4 py-1.5 rounded-full bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/60">{tag}</span>
-            ))}
+        {/* Trip header */}
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-4xl">{destination?.emoji}</p>
+            <h1 className="text-4xl font-black italic uppercase tracking-tighter text-white leading-none">{name}</h1>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold text-white/40">
+              <MapPin className="w-3.5 h-3.5 text-teal-500" />{destination?.city}, {destination?.country}
+            </span>
+            {startDate && endDate && (
+              <span className="flex items-center gap-1.5 text-[11px] font-bold text-white/40">
+                <CalendarDays className="w-3.5 h-3.5 text-teal-500" />
+                {formatDate(startDate)} → {formatDate(endDate)} · {nights} night{nights !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* AI Insight */}
-        {trip.insight && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-8 rounded-[2.5rem] bg-teal-500/10 border border-teal-500/20"
-          >
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-teal-400 mb-3">Agent Insight</p>
-            <p className="text-white/80 text-base leading-relaxed italic">{trip.insight}</p>
-          </motion.div>
+        {/* Summary */}
+        {itinerary && (
+          <div className="flex flex-wrap items-center gap-4 p-4 rounded-2xl bg-teal-500/10 border border-teal-500/20">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-teal-400" />
+              <p className="text-[11px] font-black uppercase tracking-wider text-teal-400">
+                {itinerary.days?.length}-day itinerary · Generated by Claude
+              </p>
+            </div>
+            {itinerary.totalBudget && (
+              <p className="text-[11px] font-bold text-white/40 flex items-center gap-1">
+                <DollarSign className="w-3 h-3" />~${itinerary.totalBudget} est.
+              </p>
+            )}
+          </div>
         )}
 
-        {/* Slots */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8">
-          {['Morning', 'Afternoon', 'Evening'].map((slot, i) => (
-            <div key={slot} className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${SLOT_COLORS[slot]}`}>
-                  {String(i + 1).padStart(2, '0')}. {slot}
-                </span>
-                <div className="h-px flex-1 bg-white/10" />
-              </div>
-              <ReadOnlyCard activity={slots[slot]} slot={slot} index={i} />
+        {/* General tips */}
+        {itinerary?.generalTips?.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">General Tips</p>
+            <div className="flex flex-col gap-2">
+              {itinerary.generalTips.map((tip, i) => (
+                <div key={i} className="flex items-start gap-2 text-[12px] text-white/50">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />{tip}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {/* Day cards */}
+        {itinerary?.days?.length > 0 && (
+          <div className="space-y-4">
+            {itinerary.days.map((day, i) => (
+              <DayCard key={day.day} day={day} index={i} />
+            ))}
+          </div>
+        )}
 
         {/* CTA */}
         <div className="border-t border-white/5 pt-10 flex flex-col sm:flex-row items-center justify-between gap-6">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">Powered by</p>
-            <p className="text-xl font-black italic uppercase tracking-tighter text-white/60">TRVLTOO</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/25 mb-1">Powered by</p>
+            <p className="text-xl font-black italic uppercase tracking-tighter text-white/50">TRVLTOO</p>
           </div>
           <Link
-            to={`/?destination=${encodeURIComponent(trip.destination)}`}
-            className="px-12 py-5 rounded-full bg-white text-slate-900 text-[10px] font-black uppercase tracking-widest hover:bg-white/90 transition-all shadow-2xl"
+            to={`/trips/new${destination?.city ? `?destination=${encodeURIComponent(destination.city)}` : ''}`}
+            className="px-10 py-4 rounded-full bg-white text-slate-900 text-[11px] font-black uppercase tracking-widest hover:bg-white/90 transition-colors shadow-2xl"
           >
-            Plan My Own Trip to {trip.destination} →
+            Plan My Own Trip →
           </Link>
         </div>
-
-      </div>
+      </main>
     </div>
   );
 }

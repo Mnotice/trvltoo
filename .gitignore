@@ -29,3 +29,8 @@ dist-ssr
 
 # Firebase service account (never commit)
 functions/service-account.json
+
+# Firebase service account keys (never commit)
+functions/service-account.json
+functions/*-firebase-adminsdk-*.json
+functions/package-lock.json

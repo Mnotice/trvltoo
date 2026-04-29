@@ -10,18 +10,9 @@
   --color-teal-700: #0f766e;
 }
 
-/*
-  FONT OPTIONS — swap the two variables below to experiment:
-
-  A  'Barlow Condensed', sans-serif  /  'Barlow', sans-serif
-  B  'Syne', sans-serif              /  'DM Sans', sans-serif
-  C  'Space Grotesk', sans-serif     /  'Space Mono', monospace
-  D  'Cormorant Garamond', serif     /  'Plus Jakarta Sans', sans-serif
-*/
 :root {
   --font-display: 'Space Grotesk', sans-serif;
-  --font-body:    'DM Sans', sans-serif;
-  --font-paragraph: 'Cormorant Garamond', serif;
+  --font-body:    'Barlow', sans-serif;
 }
 
 body {
@@ -30,13 +21,12 @@ body {
 }
 
 h1, h2, h3, h4,
-.font-black, .font-bold {
+.font-black {
   font-family: var(--font-display);
 }
 
 p {
-  font-family: var(--font-paragraph);
-  font-size: 1.1rem;
+  font-family: var(--font-body);
 }
 
 @layer utilities {

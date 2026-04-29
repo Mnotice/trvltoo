@@ -4,41 +4,33 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TRVLTOO — AI Travel Planner for Southeast Asia</title>
-    <meta name="description" content="Generate a personalised day itinerary for Thailand in seconds. AI-powered, locally-informed." />
+    <title>TRVLTOO — AI Travel Planner</title>
+    <meta name="description" content="Plan your next trip with Claude AI. Day-by-day itineraries built around your budget, travel style, and saved spots. 155+ destinations worldwide." />
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TRVLTOO" />
+    <link rel="apple-touch-icon" href="/pwa-icon.svg" />
+
+    <!-- Open Graph -->
     <meta property="og:type"        content="website" />
-    <meta property="og:url"         content="https://mnotice.github.io/trvltoo/" />
-    <meta property="og:title"       content="TRVLTOO — AI Travel Planner for Southeast Asia" />
-    <meta property="og:description" content="Generate a personalised day itinerary for Thailand in seconds. AI-powered, locally-informed." />
+    <meta property="og:url"         content="https://trvltoo.vercel.app/" />
+    <meta property="og:title"       content="TRVLTOO — AI Travel Planner" />
+    <meta property="og:description" content="Plan your next trip with Claude AI. Day-by-day itineraries built around your budget, travel style, and saved spots." />
     <meta property="og:image"       content="https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=1200" />
     <meta property="og:site_name"   content="TRVLTOO" />
+
+    <!-- Twitter -->
     <meta name="twitter:card"        content="summary_large_image" />
-    <meta name="twitter:title"       content="TRVLTOO — AI Travel Planner for Southeast Asia" />
-    <meta name="twitter:description" content="Generate a personalised day itinerary for Thailand in seconds. AI-powered, locally-informed." />
+    <meta name="twitter:title"       content="TRVLTOO — AI Travel Planner" />
+    <meta name="twitter:description" content="Plan your next trip with Claude AI. Day-by-day itineraries built around your budget, travel style, and saved spots." />
     <meta name="twitter:image"       content="https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=1200" />
 
-    <!-- GitHub Pages SPA routing: decode path from 404.html redirect -->
-    <script>
-      (function(l) {
-        if (l.search[1] === '/') {
-          var decoded = l.search.slice(1).split('&').map(function(s) {
-            return s.replace(/~and~/g, '&');
-          }).join('?');
-          window.history.replaceState(null, null, l.pathname.slice(0, -1) + decoded + l.hash);
-        }
-      }(window.location));
-    </script>
-
-    <!-- A: Barlow Condensed + Barlow -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,400;0,700;0,900;1,700;1,900&family=Barlow+Condensed:ital,wght@0,700;0,900;1,700;1,900&display=swap" rel="stylesheet" />
-    <!-- B: Syne + DM Sans -->
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,700;1,9..40,700&display=swap" rel="stylesheet" />
-    <!-- C: Space Grotesk + Space Mono -->
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet" />
-    <!-- D: Cormorant Garamond + Plus Jakarta Sans -->
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Plus+Jakarta+Sans:ital,wght@0,400;0,700;0,800;1,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;1,400;1,600&family=Space+Grotesk:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>
