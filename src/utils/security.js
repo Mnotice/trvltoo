@@ -11,8 +11,8 @@ export const performSecurityStartupAudit = () => {
     'VITE_FIREBASE_MESSAGING_SENDER_ID',
     'VITE_FIREBASE_APP_ID',
   ];
-  
-  const missing = REQUIRED_KEYS.filter(key => !import.meta.env[key]);
+
+  const missing = REQUIRED_KEYS.filter(key => !import.meta.env?.[key]);
   
   if (missing.length > 0) {
     throw new Error(`SECURITY AUDIT FAILURE: Missing essential environment keys: ${missing.join(', ')}`);

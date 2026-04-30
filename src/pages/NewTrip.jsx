@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, Loader2, LogIn } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import AuthModal from '../components/AuthModal';
 import { useSpots } from '../hooks/useSpots';
 import { createTrip } from '../services/firestoreService';
 import { CITIES, FEATURED_DESTINATIONS } from '../data/cities';
@@ -46,7 +47,8 @@ const SLIDE = {
 export default function NewTrip() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
   const { spots } = useSpots(user?.uid);
 
   const preSelected = location.state?.destination ?? null;
@@ -104,8 +106,11 @@ export default function NewTrip() {
         prefs,
       });
       navigate(`/trips/${id}`);
-    } catch {
-      setSaveErr('Failed to create trip. Please try again.');
+    } catch (err) {
+      const msg = err?.code === 'permission-denied'
+        ? 'Permission denied — make sure your Firestore rules are deployed.'
+        : 'Failed to create trip. Please try again.';
+      setSaveErr(msg);
       setSaving(false);
     }
   }
@@ -123,13 +128,14 @@ export default function NewTrip() {
   if (!user) return (
     <div className="min-h-screen bg-slate-950 text-white">
       <LandingNav />
+      <AnimatePresence>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</AnimatePresence>
       <div className="flex flex-col items-center justify-center min-h-screen space-y-6 text-center px-6">
         <p className="text-6xl">✈️</p>
         <p className="text-2xl font-black italic uppercase tracking-tighter">Sign in to plan a trip</p>
         <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-          onClick={signInWithGoogle}
+          onClick={() => setShowAuth(true)}
           className="flex items-center gap-3 px-8 py-4 rounded-full bg-white text-slate-900 font-black text-[12px] uppercase tracking-[0.2em]">
-          <LogIn className="w-4 h-4" /> Continue with Google
+          <LogIn className="w-4 h-4" /> Sign In
         </motion.button>
       </div>
     </div>
@@ -266,8 +272,8 @@ export default function NewTrip() {
                         >
                           <span className="text-2xl">{tier.icon}</span>
                           <span className="text-[11px] font-black uppercase tracking-wide">{tier.label}</span>
-                          <span className={`text-[10px] font-bold ${prefs.budgetTier === tier.id ? 'text-teal-400' : 'text-white/30'}`}>{tier.desc}</span>
-                          <span className="text-[9px] text-white/20 leading-tight hidden sm:block">{tier.sub}</span>
+                          <span className={`text-[10px] font-bold ${prefs.budgetTier === tier.id ? 'text-teal-400' : 'text-white/55'}`}>{tier.desc}</span>
+                          <span className="text-[9px] text-white/40 leading-tight hidden sm:block">{tier.sub}</span>
                         </motion.button>
                       ))}
                     </div>

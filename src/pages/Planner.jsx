@@ -5,7 +5,7 @@ import {
   Moon, Sun, Share2, Trash2, LogOut,
 } from 'lucide-react';
 import { auth } from '../firebase';
-import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { saveTrip, getUserTrips, deleteTrip } from '../db/trips';
 import { performSecurityStartupAudit, sanitizeVibeData } from '../utils/security';
 import { fetchItinerary } from '../services/geminiService';
@@ -18,6 +18,7 @@ import { jsPDF } from 'jspdf';
 
 import SecurityErrorBoundary from '../components/SecurityErrorBoundary';
 import SplashScreen from '../components/SplashScreen';
+import AuthModal from '../components/AuthModal';
 import Header from '../components/Header';
 import WeatherTimeline from '../components/WeatherTimeline';
 import LocationGrid from '../components/LocationGrid';
@@ -54,6 +55,7 @@ function VibeEngine() {
   const [planStep, setPlanStep] = useState(0);
   const [planDir, setPlanDir] = useState(1);
   const [user, setUser] = useState(null);
+  const [showAuth, setShowAuth] = useState(false);
   const [savedId, setSavedId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedTrips, setSavedTrips] = useState([]);
@@ -82,13 +84,7 @@ function VibeEngine() {
     return unsub;
   }, []);
 
-  const handleSignIn = async () => {
-    try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-    } catch (err) {
-      console.error('Sign in error:', err);
-    }
-  };
+  const handleSignIn = () => setShowAuth(true);
 
   const handleSignOut = async () => {
     await signOut(auth);
@@ -832,6 +828,7 @@ function VibeEngine() {
     <div className={`min-h-screen transition-all duration-1000 ${form.noctourism ? 'bg-indigo-950 text-indigo-50' : 'bg-sky-50 text-slate-900'} pt-32 pb-12 px-6 md:px-12 font-sans selection:bg-teal-500/30`}>
       <AnimatePresence>
         {isBooting && <SplashScreen onComplete={() => setIsBooting(false)} />}
+        {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
       </AnimatePresence>
 
       <Header

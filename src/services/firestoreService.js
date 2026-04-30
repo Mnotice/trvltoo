@@ -26,12 +26,11 @@ export async function getUser(uid) {
 
 export async function createTrip(uid, data) {
   const ref = await addDoc(collection(db, 'trips'), {
-    ...data,
-    createdBy: uid,
     collaborators: [],
-    spotIds: [],
     itinerary: null,
     isPublic: false,
+    ...data,
+    createdBy: uid,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

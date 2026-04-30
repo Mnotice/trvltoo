@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, LogIn, Loader2, CalendarDays, MapPin, Trash2, Crown } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTrips } from '../hooks/useTrips';
 import { usePlan, FREE_TRIP_LIMIT } from '../hooks/usePlan';
 import ProGate from '../components/ProGate';
+import AuthModal from '../components/AuthModal';
 import LandingNav from '../components/Landing/LandingNav';
 
 function formatDateRange(start, end) {
@@ -18,10 +19,11 @@ function formatDateRange(start, end) {
 
 export default function Trips() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { trips, loading: tripsLoading, deleteTrip } = useTrips(user?.uid);
   const { isPro } = usePlan(user?.uid);
   const [showGate, setShowGate] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
 
   const atLimit = !isPro && trips.length >= FREE_TRIP_LIMIT;
 
@@ -39,6 +41,7 @@ export default function Trips() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       {showGate && <ProGate onClose={() => setShowGate(false)} />}
+      <AnimatePresence>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</AnimatePresence>
       <LandingNav />
 
       <main className="max-w-6xl mx-auto px-6 pt-28 pb-20 space-y-10">
@@ -81,9 +84,9 @@ export default function Trips() {
               <p className="text-sm text-white/40 max-w-sm">Plan multi-day trips, organise your saved spots, and generate AI itineraries.</p>
             </div>
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              onClick={signInWithGoogle}
+              onClick={() => setShowAuth(true)}
               className="flex items-center gap-3 px-8 py-4 rounded-full bg-white text-slate-900 font-black text-[12px] uppercase tracking-[0.2em] hover:bg-white/90 transition-colors shadow-xl">
-              <LogIn className="w-4 h-4" /> Continue with Google
+              <LogIn className="w-4 h-4" /> Sign In
             </motion.button>
           </div>
         ) : tripsLoading ? (

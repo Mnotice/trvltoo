@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Users, ArrowRight, LogIn } from 'lucide-react';
 import { getInvite, acceptInvite, getTrip } from '../services/firestoreService';
 import { useAuth } from '../hooks/useAuth';
+import AuthModal from '../components/AuthModal';
 import LandingNav from '../components/Landing/LandingNav';
 
 export default function InvitePage() {
   const { token }   = useParams();
   const navigate    = useNavigate();
-  const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
 
   const [invite,  setInvite]  = useState(null);
   const [trip,    setTrip]    = useState(null);
@@ -67,6 +69,7 @@ export default function InvitePage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <LandingNav />
+      <AnimatePresence>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</AnimatePresence>
       <main className="max-w-md mx-auto px-6 pt-32 pb-20 flex flex-col items-center text-center space-y-8">
 
         <div className="w-16 h-16 rounded-[1.5rem] bg-teal-500/10 border border-teal-500/20 flex items-center justify-center">
@@ -87,9 +90,9 @@ export default function InvitePage() {
           <div className="w-full space-y-4">
             <p className="text-sm text-white/40">Sign in to join as a collaborator.</p>
             <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-              onClick={signInWithGoogle}
+              onClick={() => setShowAuth(true)}
               className="w-full flex items-center justify-center gap-3 px-8 py-4 rounded-full bg-white text-slate-900 font-black text-[12px] uppercase tracking-[0.2em] hover:bg-white/90 transition-colors shadow-xl">
-              <LogIn className="w-4 h-4" /> Sign in with Google
+              <LogIn className="w-4 h-4" /> Sign In
             </motion.button>
           </div>
         ) : isOwner || isAlreadyCollaborator ? (

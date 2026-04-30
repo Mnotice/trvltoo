@@ -6,6 +6,7 @@ import { useSpots } from '../hooks/useSpots';
 import ManualEntryForm from '../components/SpotCollector/ManualEntryForm';
 import URLParser from '../components/SpotCollector/URLParser';
 import SpotGrid from '../components/SpotCollector/SpotGrid';
+import AuthModal from '../components/AuthModal';
 import LandingNav from '../components/Landing/LandingNav';
 
 const CATEGORY_FILTERS = [
@@ -32,7 +33,8 @@ function useAddModal() {
 }
 
 export default function Spots() {
-  const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
   const { spots, loading: spotsLoading, createSpot, deleteSpot } = useSpots(user?.uid);
   const { modal, open, openUrl, openManual, close } = useAddModal();
   const [activeFilter, setActiveFilter] = useState('all');
@@ -52,6 +54,7 @@ export default function Spots() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <LandingNav />
+      <AnimatePresence>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</AnimatePresence>
 
       <main className="max-w-6xl mx-auto px-6 pt-28 pb-20 space-y-10">
         {/* Page header */}
@@ -87,10 +90,10 @@ export default function Spots() {
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
-              onClick={signInWithGoogle}
+              onClick={() => setShowAuth(true)}
               className="flex items-center gap-3 px-8 py-4 rounded-full bg-white text-slate-900 font-black text-[12px] uppercase tracking-[0.2em] hover:bg-white/90 transition-colors shadow-xl"
             >
-              <LogIn className="w-4 h-4" /> Continue with Google
+              <LogIn className="w-4 h-4" /> Sign In
             </motion.button>
           </div>
         ) : (

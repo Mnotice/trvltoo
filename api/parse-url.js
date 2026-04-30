@@ -1,19 +1,20 @@
 // Vercel API route — resolves shortened URLs and extracts OG metadata server-side.
 // Uses Node 18+ native fetch (no extra dependencies).
 
-const PRIVATE_IP_RE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|::1|fc00:|fd)/;
+import { isSafeUrl } from './_lib/urlSafety.js';
 
-function isSafeUrl(raw) {
-  try {
-    const u = new URL(raw);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-    const host = u.hostname.toLowerCase().replace(/\.+$/, '');
-    if (host === 'localhost' || PRIVATE_IP_RE.test(host)) return false;
-    return true;
-  } catch { return false; }
+const ALLOWED_ORIGINS = new Set([
+  'http://localhost:5173',
+  'http://localhost:4173',
+  process.env.ALLOWED_ORIGIN,
+].filter(Boolean));
+
+function getAllowedOrigin(req) {
+  const origin = req.headers.origin ?? '';
+  return ALLOWED_ORIGINS.has(origin) ? origin : null;
 }
 
-function parseGoogleMapsPath(url) {
+export function parseGoogleMapsPath(url) {
   try {
     const u = new URL(url);
     const pathMatch = u.pathname.match(/\/maps\/(?:place|search)\/([^/@]+)\/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
@@ -46,7 +47,7 @@ function getMetaContent(html, property) {
   return m ? (m[1] || m[2] || '').trim() : '';
 }
 
-function parseOgFromHtml(html) {
+export function parseOgFromHtml(html) {
   const name   = getMetaContent(html, 'og:title') || getMetaContent(html, 'twitter:title') || '';
   const image  = getMetaContent(html, 'og:image') || getMetaContent(html, 'twitter:image') || '';
   const desc   = getMetaContent(html, 'og:description') || getMetaContent(html, 'twitter:description') || '';
@@ -62,10 +63,14 @@ function parseOgFromHtml(html) {
 }
 
 export default async function handler(req, res) {
-  // CORS for local dev
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigin = getAllowedOrigin(req);
+  if (allowedOrigin) {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader('Vary', 'Origin');
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
+  if (!allowedOrigin) return res.status(403).json({ error: 'Forbidden' });
 
   const { url } = req.query;
   if (!url) return res.status(400).json({ error: 'url param is required' });
@@ -73,7 +78,7 @@ export default async function handler(req, res) {
 
   const UA = 'Mozilla/5.0 (compatible; TRVLTOO/1.0; +https://trvltoo.com)';
 
-  // 1. Try client-side Google Maps parsing first (instant, no fetch needed)
+  // 1. Try direct Google Maps path parsing (no network needed)
   const gmDirect = parseGoogleMapsPath(url);
   if (gmDirect) return res.json({ ...gmDirect, source: 'google-maps' });
 
@@ -86,10 +91,13 @@ export default async function handler(req, res) {
       headers: { 'User-Agent': UA },
       signal: AbortSignal.timeout(5000),
     });
-    finalUrl = head.url || url;
-
-    const gmResolved = parseGoogleMapsPath(finalUrl);
-    if (gmResolved) return res.json({ ...gmResolved, source: 'google-maps' });
+    const resolved = head.url || url;
+    // Re-validate after redirect: a short URL could redirect to an internal address
+    if (isSafeUrl(resolved)) {
+      finalUrl = resolved;
+      const gmResolved = parseGoogleMapsPath(finalUrl);
+      if (gmResolved) return res.json({ ...gmResolved, source: 'google-maps' });
+    }
   } catch {}
 
   // 3. Fetch HTML and parse OG/Twitter tags
@@ -104,7 +112,7 @@ export default async function handler(req, res) {
                  : /tiktok\.com/i.test(finalUrl)    ? 'tiktok'
                  : 'url';
     return res.json({ ...og, source });
-  } catch (err) {
+  } catch {
     return res.status(422).json({ error: 'Could not extract data from this URL. Try adding the spot manually.' });
   }
 }

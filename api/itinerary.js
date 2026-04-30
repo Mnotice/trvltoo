@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { sanitizeString } from './_lib/sanitize.js';
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -11,11 +12,6 @@ const ALLOWED_ORIGINS = new Set([
 function getAllowedOrigin(req) {
   const origin = req.headers.origin ?? '';
   return ALLOWED_ORIGINS.has(origin) ? origin : null;
-}
-
-function sanitizeString(val, maxLen = 200) {
-  if (typeof val !== 'string') return '';
-  return val.replace(/[\x00-\x1F\x7F]/g, '').slice(0, maxLen);
 }
 
 function buildPrompt({ destination, nights, startDate, spots, prefs = {} }) {

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Crown, Loader2, Sparkles, ArrowRight } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import { usePlan, FREE_TRIP_LIMIT } from '../hooks/usePlan';
+import AuthModal from '../components/AuthModal';
 import LandingNav from '../components/Landing/LandingNav';
 
 const FREE_FEATURES  = [`${FREE_TRIP_LIMIT} trips`, 'AI itinerary generation', 'Spot collection & URL parser', 'Invite collaborators', 'Markdown & JSON export'];
@@ -13,7 +14,8 @@ const PRO_FEATURES   = ['Unlimited trips', 'Unlimited AI regenerations', 'PDF ex
 
 export default function Upgrade() {
   const navigate = useNavigate();
-  const { user, signInWithGoogle } = useAuth();
+  const { user } = useAuth();
+  const [showAuth, setShowAuth] = useState(false);
   const { isPro } = usePlan(user?.uid);
   const [searchParams] = useSearchParams();
 
@@ -97,6 +99,7 @@ export default function Upgrade() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <LandingNav />
+      <AnimatePresence>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</AnimatePresence>
       <main className="max-w-4xl mx-auto px-6 pt-28 pb-20 space-y-14">
 
         {/* Hero */}
@@ -157,7 +160,7 @@ export default function Upgrade() {
 
             {!user ? (
               <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-                onClick={signInWithGoogle}
+                onClick={() => setShowAuth(true)}
                 className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-[12px] uppercase tracking-[0.2em] shadow-lg shadow-amber-500/20">
                 Sign in to upgrade
               </motion.button>
