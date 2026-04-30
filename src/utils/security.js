@@ -45,8 +45,11 @@ export const sanitizeVibeData = (data) => {
   }
 
   // Ensure numeric constraints are strictly adhered to
-  sanitized.energy = Math.min(Math.max(Number(sanitized.energy) || 5, 1), 10);
-  sanitized.nightIntensity = Math.min(Math.max(Number(sanitized.nightIntensity) || 5, 1), 10);
+  // Use Number.isNaN to avoid treating 0 as falsy (0 should clamp to 1, not default to 5)
+  const energyRaw = Number(sanitized.energy);
+  sanitized.energy = Math.min(Math.max(Number.isNaN(energyRaw) ? 5 : energyRaw, 1), 10);
+  const nightRaw = Number(sanitized.nightIntensity);
+  sanitized.nightIntensity = Math.min(Math.max(Number.isNaN(nightRaw) ? 5 : nightRaw, 1), 10);
   
   return sanitized;
 };
