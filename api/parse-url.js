@@ -33,7 +33,7 @@ export function parseGoogleMapsPath(url) {
       if (coords) return { name: '', address: q, coordinates: { lat: parseFloat(coords[1]), lng: parseFloat(coords[2]) }, imageUrl: '', notes: '' };
       return { name: q, address: '', coordinates: null, imageUrl: '', notes: '' };
     }
-  } catch {}
+  } catch { /* invalid URL format — return null */ }
   return null;
 }
 
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
       const gmResolved = parseGoogleMapsPath(finalUrl);
       if (gmResolved) return res.json({ ...gmResolved, source: 'google-maps' });
     }
-  } catch {}
+  } catch { /* HEAD/redirect failed — proceed with direct fetch */ }
 
   // 3. Fetch HTML and parse OG/Twitter tags
   try {
