@@ -17,6 +17,6 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 let _analytics = null;
-try { _analytics = getAnalytics(app); } catch (_) {}
+try { _analytics = getAnalytics(app); } catch { /* analytics unavailable in some environments */ }
 export const analytics = _analytics;
 export default app;
