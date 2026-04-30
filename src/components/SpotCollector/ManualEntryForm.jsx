@@ -41,7 +41,7 @@ export default function ManualEntryForm({ onSave, onClose }) {
         coordinates: null,
       });
       onClose();
-    } catch (err) {
+    } catch {
       setError('Failed to save. Try again.');
     } finally {
       setSaving(false);
