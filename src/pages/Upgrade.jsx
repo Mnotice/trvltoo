@@ -42,7 +42,7 @@ export default function Upgrade() {
       })
       .catch(() => setError('Verification failed. Contact support if you were charged.'))
       .finally(() => setVerifying(false));
-  }, [sessionId, user]);
+  }, [sessionId, user, upgraded]);
 
   async function handleUpgrade() {
     if (!user) return;

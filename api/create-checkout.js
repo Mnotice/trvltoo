@@ -28,7 +28,7 @@ export default async function handler(req, res) {
       cancel_url:  `${origin}/upgrade`,
     });
     res.json({ url: session.url });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: 'Could not create checkout session' });
   }
 }

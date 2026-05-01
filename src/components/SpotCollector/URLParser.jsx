@@ -22,7 +22,7 @@ async function parseUrl(url) {
   try {
     const resp = await fetch(`/api/parse-url?url=${encodeURIComponent(url)}`);
     if (resp.ok) return await resp.json();
-  } catch {}
+  } catch { /* network error — fall back to hostname extraction */ }
 
   // Last resort: return hostname as name
   return { name: hostnameToName(url), address: '', imageUrl: '', notes: '', coordinates: null, source };

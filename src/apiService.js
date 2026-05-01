@@ -418,7 +418,7 @@ export const fetchWeather = async (destination) => {
       maxUv: weatherData.daily.uv_index_max[0],
       hourly: weatherData.hourly.temperature_2m.slice(6, 22) // 6 AM to 10 PM
     };
-  } catch (err) {
+  } catch {
     return { maxTemp: 30, precipProb: 10, maxUv: 7, hourly: Array(16).fill(30) };
   }
 };

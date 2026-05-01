@@ -51,7 +51,7 @@ export function parseGoogleMapsUrl(url) {
       const name = u.searchParams.get('q') || '';
       return { name, address: '', coordinates: { lat, lng }, imageUrl: '', notes: '' };
     }
-  } catch {}
+  } catch { /* invalid URL format — return null */ }
   return null;
 }
 

@@ -8,7 +8,8 @@ export function isSafeUrl(raw) {
   try {
     const u = new URL(raw);
     if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-    const host = u.hostname.toLowerCase().replace(/\.+$/, '');
+    // Strip brackets from IPv6 addresses: [::1] → ::1
+    const host = u.hostname.toLowerCase().replace(/\.+$/, '').replace(/^\[|\]$/g, '');
     if (host === 'localhost' || PRIVATE_IP_RE.test(host)) return false;
     return true;
   } catch {

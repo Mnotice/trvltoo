@@ -453,14 +453,15 @@ export default function TripDetail() {
     });
     const unsubComments = subscribeComments(id, setComments);
     return () => { unsub(); unsubComments(); };
-  }, [id]);
+  }, [id, navigate]);
 
   // Load spots when spotIds change
+  const spotIdsKey = trip?.spotIds?.join(',') ?? '';
   useEffect(() => {
     if (!trip?.spotIds?.length) { setSpots([]); return; }
     getSpots(trip.spotIds).then(setSpots);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(trip?.spotIds)]);
+  }, [spotIdsKey]);
 
   async function handleGenerate() {
     if (!trip) return;

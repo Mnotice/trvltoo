@@ -14,9 +14,6 @@ export default function DateRangePicker({ startDate, endDate, onChange, maxNight
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [hovering, setHovering]   = useState(null);
 
-  const start = startDate ? fromKey(startDate) : null;
-  const end   = endDate   ? fromKey(endDate)   : null;
-
   // Build calendar grid
   const firstDay = new Date(viewYear, viewMonth, 1);
   const lastDay  = new Date(viewYear, viewMonth + 1, 0);
