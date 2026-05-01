@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const SPLASH_DESTINATIONS = ['Bangkok', 'Chiang Mai', 'Phuket', 'Krabi', 'Koh Samui', 'Chiang Rai'];
+const SPLASH_DESTINATIONS = ['Bangkok', 'Bali', 'Tokyo', 'Kyoto', 'Hanoi', 'Ho Chi Minh City', 'Singapore', 'Kuala Lumpur', 'Phuket', 'Chiang Mai', 'Seoul', 'Manila'];
 
 export default function SplashScreen({ onComplete }) {
   const [destIndex, setDestIndex] = useState(0);
@@ -44,7 +44,7 @@ export default function SplashScreen({ onComplete }) {
           transition={{ delay: 0.1, duration: 0.5, ease: 'easeOut' }}
           className="w-14 h-14 rounded-full bg-white text-slate-950 flex items-center justify-center font-black text-xl mb-8 shadow-[0_0_40px_rgba(255,255,255,0.15)]"
         >
-          TML
+          T
         </motion.div>
 
         <motion.h1
@@ -62,7 +62,7 @@ export default function SplashScreen({ onComplete }) {
           transition={{ delay: 0.7, duration: 0.5 }}
           className="text-[10px] font-black uppercase tracking-[0.45em] mb-10"
         >
-          AI Travel Planner · Southeast Asia
+          AI Travel Planner · 155+ Destinations
         </motion.p>
 
         <motion.div
