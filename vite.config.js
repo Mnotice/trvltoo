@@ -21,9 +21,17 @@ export default defineConfig({
           orientation: 'portrait-primary',
           scope: '/',
           start_url: '/',
+          categories: ['travel', 'lifestyle'],
+          shortcuts: [
+            { name: 'My Trips',    url: '/trips',        description: 'View your saved trips' },
+            { name: 'Explore',     url: '/destinations', description: 'Browse destinations' },
+            { name: 'My Spots',    url: '/spots',        description: 'View saved spots' },
+          ],
           icons: [
-            { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-            { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+            { src: 'pwa-icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+            { src: 'pwa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+            { src: 'pwa-icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+            { src: 'pwa-icon.svg',     sizes: 'any',     type: 'image/svg+xml', purpose: 'any' },
           ],
         },
         workbox: {
@@ -39,8 +47,32 @@ export default defineConfig({
                 cacheableResponse: { statuses: [0, 200] },
               },
             },
+            // Cache map tiles for offline map viewing
+            {
+              urlPattern: /^https:\/\/[abc]\.basemaps\.cartocdn\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'map-tiles',
+                expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            {
+              urlPattern: /^https:\/\/[abc]\.tile\.openstreetmap\.org\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'map-tiles',
+                expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 30 },
+                cacheableResponse: { statuses: [0, 200] },
+              },
+            },
+            // Firebase and API routes must always hit the network
             {
               urlPattern: /^https:\/\/.*\.firebaseio\.com\/.*/i,
+              handler: 'NetworkOnly',
+            },
+            {
+              urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
               handler: 'NetworkOnly',
             },
             {
