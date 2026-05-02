@@ -3,7 +3,10 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, Loader2, LogIn } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { usePlan, FREE_TRIP_LIMIT } from '../hooks/usePlan';
+import { useTrips } from '../hooks/useTrips';
 import AuthModal from '../components/AuthModal';
+import ProGate from '../components/ProGate';
 import { useSpots } from '../hooks/useSpots';
 import { createTrip } from '../services/firestoreService';
 import { CITIES, FEATURED_DESTINATIONS } from '../data/cities';
@@ -48,7 +51,10 @@ export default function NewTrip() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, loading: authLoading } = useAuth();
+  const { isPro } = usePlan(user?.uid);
+  const { trips } = useTrips(user?.uid);
   const [showAuth, setShowAuth] = useState(false);
+  const [showGate, setShowGate] = useState(false);
   const { spots } = useSpots(user?.uid);
 
   const preSelected = location.state?.destination ?? null;
@@ -94,6 +100,7 @@ export default function NewTrip() {
 
   async function handleCreate() {
     if (!user || !destination || !dates.startDate || !dates.endDate) return;
+    if (!isPro && trips.length >= FREE_TRIP_LIMIT) { setShowGate(true); return; }
     setSaving(true);
     try {
       const name = tripName.trim() || `${destination.city} Trip`;
@@ -129,6 +136,7 @@ export default function NewTrip() {
     <div className="min-h-screen bg-slate-950 text-white">
       <LandingNav />
       <AnimatePresence>{showAuth && <AuthModal onClose={() => setShowAuth(false)} />}</AnimatePresence>
+      {showGate && <ProGate onClose={() => setShowGate(false)} />}
       <div className="flex flex-col items-center justify-center min-h-screen space-y-6 text-center px-6">
         <p className="text-6xl">✈️</p>
         <p className="text-2xl font-black italic uppercase tracking-tighter">Sign in to plan a trip</p>
