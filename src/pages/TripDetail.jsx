@@ -15,7 +15,9 @@ import {
 } from '../services/firestoreService';
 import { streamItinerary } from '../services/claudeService';
 import { useAuth } from '../hooks/useAuth';
+import { usePlan } from '../hooks/usePlan';
 import LandingNav from '../components/Landing/LandingNav';
+import ProGate from '../components/ProGate';
 import MapView from '../components/Map/MapView';
 import { exportMarkdown, exportJSON, exportPDF } from '../utils/exportItinerary';
 
@@ -429,8 +431,10 @@ export default function TripDetail() {
   const { id }   = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { isPro } = usePlan(user?.uid);
 
   const [trip,     setTrip]     = useState(null);
+  const [showGate, setShowGate] = useState(false);
   const [spots,    setSpots]    = useState([]);
   const [comments, setComments] = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -465,6 +469,8 @@ export default function TripDetail() {
 
   async function handleGenerate() {
     if (!trip) return;
+    // Regenerating an existing itinerary is a Pro feature
+    if (trip.itinerary && !isPro) { setShowGate(true); return; }
     setGenState('streaming');
     setRawText('');
     setErrMsg('');
@@ -721,7 +727,7 @@ export default function TripDetail() {
                     {[
                       { label: 'Markdown', icon: FileText, fn: () => exportMarkdown(trip) },
                       { label: 'JSON',     icon: FileJson, fn: () => exportJSON(trip)     },
-                      { label: 'PDF',      icon: FileDown, fn: () => exportPDF(trip)      },
+                      { label: 'PDF',      icon: FileDown, fn: () => isPro ? exportPDF(trip) : setShowGate(true) },
                     ].map(({ label, icon: Icon, fn }) => (
                       <button key={label} onClick={() => { fn(); setExportOpen(false); }}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-[11px] font-black uppercase tracking-wider text-white/50 hover:text-white hover:border-teal-500/30 transition-all">
@@ -796,6 +802,8 @@ export default function TripDetail() {
           </div>
         )}
       </main>
+
+      {showGate && <ProGate onClose={() => setShowGate(false)} />}
     </div>
   );
 }
