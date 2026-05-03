@@ -1,5 +1,3 @@
-import { jsPDF } from 'jspdf';
-
 function fromKey(k) { return new Date(k + 'T00:00:00'); }
 function formatDate(k) {
   return fromKey(k).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -81,7 +79,8 @@ export function exportJSON(trip) {
   );
 }
 
-export function exportPDF(trip) {
+export async function exportPDF(trip) {
+  const { jsPDF } = await import('jspdf');
   const { name, destination, startDate, endDate, itinerary } = trip;
   const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
   const MARGIN = 20;
