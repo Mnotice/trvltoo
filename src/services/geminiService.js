@@ -1,6 +1,7 @@
 import { CATEGORY_IMAGES } from '../data/destinations';
 import { GROUP_CONTEXT, DIETARY_CONTEXT, BUDGET_CONTEXT } from '../data/personas';
 import { FEATURE_DATA } from '../data/destinations';
+import { buildSlottedPools } from '../activityPool';
 
 const RATE_LIMIT = { dailyMax: 20, cooldownMs: 15_000 };
 
@@ -144,7 +145,6 @@ Write a warm, personal 4–5 sentence briefing in second person. Open with a rea
 
 export const fetchItinerary = async (prefs, firestorePool = null) => {
   if (firestorePool && firestorePool.length >= 15) {
-    const { buildSlottedPools } = await import('../activityPool');
     const slotted = buildSlottedPools(firestorePool, prefs);
 
     const hasEnough = ['Morning', 'Afternoon', 'Evening'].every(s => slotted[s].length >= 3);
