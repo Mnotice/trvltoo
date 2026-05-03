@@ -1,3 +1,5 @@
+import { buildSlottedPools } from './activityPool';
+
 export const THAILAND_PLACEHOLDERS = [
   'https://images.unsplash.com/photo-1528181304800-2f5402473ff1?auto=format&fit=crop&q=80&w=800',
   'https://images.unsplash.com/photo-1552465011-b4e21bf6e79a?auto=format&fit=crop&q=80&w=800',
@@ -428,7 +430,6 @@ export const fetchItinerary = async (prefs, firestorePool = null) => {
   // If a pool was passed in from the app (fetched from Firestore), use it for
   // activities and only call the AI for the insight text.
   if (firestorePool && firestorePool.length >= 15) {
-    const { buildSlottedPools } = await import('./activityPool');
     const slotted = buildSlottedPools(firestorePool, prefs);
 
     const hasEnough = ['Morning', 'Afternoon', 'Evening']
