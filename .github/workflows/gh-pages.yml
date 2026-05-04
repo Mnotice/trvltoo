@@ -1,8 +1,6 @@
 name: Preview — GitHub Pages
 
 on:
-  push:
-    branches: [main, claude/document-file-structure-6JfIf]
   workflow_dispatch:
 
 permissions:
