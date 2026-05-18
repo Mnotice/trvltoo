@@ -40,7 +40,18 @@ if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
   }
 }
 
-admin.initializeApp({ credential, projectId: 'trvltoo-4c81f' });
+// Get project ID from service account or environment variable
+const projectId = process.env.FIREBASE_PROJECT_ID || 
+                 (credential.projectId ? credential.projectId : null);
+
+if (!projectId) {
+  console.error('\n❌  Could not determine Firebase project ID.\n');
+  console.error('    Set FIREBASE_PROJECT_ID environment variable or ensure');
+  console.error('    your service account JSON includes projectId\n');
+  process.exit(1);
+}
+
+admin.initializeApp({ credential, projectId });
 const db = admin.firestore();
 
 // ── Gemini ────────────────────────────────────────────────────────────────────
