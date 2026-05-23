@@ -65,13 +65,13 @@ Your TRVLTOO project has been successfully converted to open source format with 
 ## 🔒 Security Summary
 
 ### What Was Removed:
-- ✅ Firebase API Key: `AIzaSyDDlIVBO0kAhP7sOerLuPngUXi_KNEXZHE`
-- ✅ Firebase Project ID: `trvltoo-4c81f`
-- ✅ Firebase App ID: `1:69073938110:web:a5959ec63578331622e0ef`
-- ✅ Firebase Messaging Sender ID: `69073938110`
-- ✅ Firebase Measurement ID: `G-E3JCLY0NN5`
-- ✅ Gemini API Key: `AIzaSyDbTUY6QJl0NkQR33BIYcvLYCKEwXUZSHA`
-- ✅ RapidAPI Key: `VZ3VKRD51TTYGK0QXYFNJADXVIP0DA1OHUHO1MT4XXTDJ2ER`
+- ✅ Firebase API Key: [REDACTED]
+- ✅ Firebase Project ID: [REDACTED]
+- ✅ Firebase App ID: [REDACTED]
+- ✅ Firebase Messaging Sender ID: [REDACTED]
+- ✅ Firebase Measurement ID: [REDACTED]
+- ✅ Gemini API Key: [REDACTED]
+- ✅ RapidAPI Key: [REDACTED]
 - ✅ Anthropic API Key (from `.env.local`)
 - ✅ Internal project references
 

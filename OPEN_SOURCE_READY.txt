@@ -35,13 +35,13 @@
 🔒 SECURITY VERIFICATION:
 
 Removed Credentials:
-  ✗ Firebase API Key
-  ✗ Firebase Project ID: trvltoo-4c81f
-  ✗ Firebase Messaging Sender ID
-  ✗ Firebase Measurement ID
-  ✗ Gemini API Key
-  ✗ RapidAPI Key
-  ✗ Anthropic API Key
+   ✗ Firebase API Key
+   ✗ Firebase Project ID: [REDACTED]
+   ✗ Firebase Messaging Sender ID
+   ✗ Firebase Measurement ID
+   ✗ Gemini API Key
+   ✗ RapidAPI Key
+   ✗ Anthropic API Key
 
 Verification Commands:
   # Check for remaining secrets
