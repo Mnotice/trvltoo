@@ -15,7 +15,7 @@ Thank you for your interest in contributing to TRVLTOO! This guide will help you
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/trvltoo.git
+   git clone https://github.com/Mnotice/trvltoo.git
    cd trvltoo
    ```
 
@@ -158,7 +158,7 @@ npx firebase emulators:start
 
 ## Questions or Issues?
 
-- Check existing [GitHub Issues](https://github.com/yourusername/trvltoo/issues)
+- Check existing [GitHub Issues](https://github.com/Mnotice/trvltoo/issues)
 - Join our community discussions
 - Read the [README.md](README.md) for project overview
 

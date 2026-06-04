@@ -6,7 +6,7 @@ import InstallPrompt from './components/InstallPrompt.jsx';
 import SplashScreen from './components/SplashScreen.jsx';
 import OfflineBanner from './components/OfflineBanner.jsx';
 
-const App          = lazy(() => import('./App.jsx'));
+const Planner      = lazy(() => import('./pages/Planner.jsx'));
 const Spots        = lazy(() => import('./pages/Spots.jsx'));
 const Trips        = lazy(() => import('./pages/Trips.jsx'));
 const NewTrip      = lazy(() => import('./pages/NewTrip.jsx'));
@@ -34,7 +34,7 @@ export default function Root() {
           <Suspense fallback={null}>
             <Routes>
               <Route path="/"              element={<Landing />} />
-              <Route path="/plan"          element={<App />} />
+              <Route path="/plan"          element={<Planner />} />
               <Route path="/spots"         element={<Spots />} />
               <Route path="/trips"         element={<Trips />} />
               <Route path="/trips/new"     element={<NewTrip />} />

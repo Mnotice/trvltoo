@@ -64,7 +64,7 @@ Every saved trip gets a shareable link with a full social preview — send it ov
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/trvltoo.git
+git clone https://github.com/Mnotice/trvltoo.git
 cd trvltoo
 
 # Install dependencies
@@ -124,7 +124,7 @@ npm run build       # Build for production
 npm run lint        # Run ESLint
 npm run test        # Run tests
 npm run test:watch  # Watch mode for tests
-npm test:coverage   # Coverage report
+npm run test:coverage   # Coverage report
 ```
 
 ---
@@ -152,7 +152,9 @@ React 19 · Vite · Tailwind CSS · Firebase · Google Gemini · Framer Motion
 
 ## Project Status
 
-TRVLTOO is actively maintained and open for contributions. We're continually adding features and expanding to more destinations.
+**v0.1.0** — First open-source baseline. See [CHANGELOG.md](CHANGELOG.md) and [docs/CODEBASE.md](docs/CODEBASE.md) for architecture and release notes.
+
+TRVLTOO is actively maintained and open for contributions.
 
 ---
 
@@ -177,8 +179,8 @@ TRVLTOO is actively maintained and open for contributions. We're continually add
 ## Questions or Issues?
 
 - 📖 [Read the documentation](./docs)
-- 🐛 [Open an issue](https://github.com/yourusername/trvltoo/issues)
-- 💬 [Start a discussion](https://github.com/yourusername/trvltoo/discussions)
+- 🐛 [Open an issue](https://github.com/Mnotice/trvltoo/issues)
+- 💬 [Start a discussion](https://github.com/Mnotice/trvltoo/discussions)
 - 📧 [Contact us](mailto:support@trvltoo.com)
 
 ---

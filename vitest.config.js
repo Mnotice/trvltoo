@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['**/*.test.js', '**/*.test.jsx'],
-    exclude: ['node_modules/**'],
+    exclude: ['node_modules/**', 'functions/**', 'dist/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
