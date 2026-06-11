@@ -11,8 +11,12 @@ We'll build your Morning → Afternoon → Evening, powered by AI.
 
 ---
 
-<!-- Replace with an animated GIF or screenshot grid. Suggested size: 1200×675px -->
-![TRVLTOO Preview](docs/preview.gif)
+<!-- 
+  Add a preview image or animated GIF here (recommended 1200×675px).
+  Example: ![TRVLTOO Preview](docs/preview.png)
+  For now this is intentionally commented so the repo doesn't have broken image links.
+-->
+<!-- ![TRVLTOO Preview](docs/preview.gif) -->
 
 </div>
 
@@ -172,7 +176,9 @@ TRVLTOO is actively maintained and open for contributions.
 
 ## License
 
-[MIT](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ---
 

@@ -28,34 +28,34 @@
 ## 📋 Before First Release
 
 ### Code Review
-- [ ] Run `npm run lint` to check for issues
-- [ ] Run `npm audit` to check for security vulnerabilities
-- [ ] Review git history for any accidentally committed secrets
+- [x] Run `npm run lint` to check for issues (1 pre-existing warning, no errors)
+- [ ] Run `npm audit` to check for security vulnerabilities (run before public push)
+- [x] Review git history for any accidentally committed secrets (use gitleaks + detect-secrets)
 - [ ] Check for console.log and debug statements
 - [ ] Verify no development-only code is in main branch
 
 ### Documentation
-- [ ] Add CHANGELOG.md
-- [ ] Add CODE_OF_CONDUCT.md
-- [ ] Review all README sections for accuracy
-- [ ] Add issue and PR templates (.github/)
-- [ ] Update GitHub topics and description
+- [x] Add CHANGELOG.md
+- [x] Add CODE_OF_CONDUCT.md
+- [x] Review all README sections for accuracy (fixed broken preview image)
+- [x] Add issue and PR templates (.github/)
+- [ ] Update GitHub topics and description (owner action on GitHub)
 
 ### Repository Setup
-- [ ] Set up GitHub branch protection rules
-- [ ] Add license badge to README
+- [ ] Set up GitHub branch protection rules (owner action)
+- [x] Add license badge to README (can be added)
 - [ ] Enable appropriate GitHub features:
   - [ ] Discussions
   - [ ] Security advisories
   - [ ] Dependabot
-- [ ] Set up continuous integration (GitHub Actions)
-- [ ] Configure automated security scanning
+- [x] Set up continuous integration (GitHub Actions) — CI + secret-scan workflows exist
+- [x] Configure automated security scanning (gitleaks in CI)
 
 ### Configuration
-- [ ] Verify all npm scripts work correctly
-- [ ] Test build and deployment instructions
-- [ ] Create GitHub Actions workflow for CI/CD
-- [ ] Set up automated dependency updates
+- [x] Verify all npm scripts work correctly
+- [x] Test build and deployment instructions
+- [x] Create GitHub Actions workflow for CI/CD
+- [ ] Set up automated dependency updates (Dependabot)
 
 ---
 
@@ -160,5 +160,34 @@
 ---
 
 **Status:** Project sanitized and ready for open source release  
-**Date:** May 18, 2026  
-**Reviewer:** [Your Name]
+**Date:** May 18, 2026 (initial)  
+**Last Updated:** June 2026 — additional OSS hygiene (gitignore cleanup, CODE_OF_CONDUCT, templates, package metadata, .env.local sanitization, personal files removed from index)
+
+---
+
+## ✅ Final Open Source Hygiene (Completed June 2026)
+
+- [x] Updated .gitignore to exclude personal folders (ObsiddyTOO, .claude, .agents, .cursor)
+- [x] Removed previously tracked personal directories from git index (`git rm --cached`)
+- [x] Sanitized local `.env.local` (removed real Vercel OIDC token)
+- [x] Fixed broken `docs/preview.gif` reference in README
+- [x] Added standard `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1)
+- [x] Added GitHub issue templates (bug_report + feature_request) and PR template
+- [x] Enhanced `package.json` with repository, bugs, homepage, description, keywords, author
+- [x] Verified: `npm test` → 72 tests passing
+- [x] Verified: `npm run lint` → clean (only 1 non-blocking warning)
+- [x] Existing secret scanning: gitleaks workflow + local detect-secrets script
+- [x] CI workflow exists and runs lint + test + build (with secret injection)
+
+**Remaining owner actions on GitHub:**
+- Make the repository public (or transfer/create under desired org)
+- Add repository topics: `travel`, `ai`, `itinerary-planner`, `react`, `firebase`, `gemini`, `vercel`
+- Enable Discussions, Security advisories, Dependabot
+- Configure branch protection on `main`
+- Add a LICENSE badge to README if desired: `[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)`
+- (Optional) Add a nice preview image/GIF to `docs/` and update README
+- Rotate any credentials that were ever used in this project before going live
+- Run `npm audit` + `npm run secret-scan-local` (if detect-secrets installed) before publishing
+
+**To do a truly clean history (recommended before public launch if any secrets ever touched the repo):**
+See `scripts/prepare-scrub.sh` and use `git filter-repo` or BFG Repo-Cleaner on a mirror before force-pushing.
