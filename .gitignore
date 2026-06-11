@@ -54,3 +54,23 @@ ObsiddyTOO/
 
 # OS / misc
 Thumbs.db
+
+# === Open source migration & internal artifacts ===
+# These were useful during the OSS conversion but are not needed
+# in the public repository going forward.
+OPENSOURCE_CHECKLIST.md
+OPENSOURCE_MIGRATION.md
+OPEN_SOURCE_READY.txt
+
+# Internal planning and competitor research
+docs/TRVLTOO_ROAMY_COMPETITOR_PLAN.md
+docs/df.md
+
+# Secrets scanning baseline (generated locally)
+.secrets.baseline
+
+# AI/agent tooling lock files (not part of the application)
+skills-lock.json
+
+# AI/agent personal tooling directories (if not already covered above)
+agent/
